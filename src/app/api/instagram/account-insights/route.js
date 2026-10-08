@@ -1,0 +1,34 @@
+import { NextResponse } from "next/server";
+import { sql } from "@/lib/db";
+import { decrypt } from "@/lib/crypto";
+import { fetchAccountInsights, fetchPages } from "@/lib/meta";
+import { readSession, SESSION_COOKIE } from "@/lib/session";
+
+// Daily account insights for one IG account the logged-in user owns. Not stored.
+export async function GET(request) {
+  const session = await readSession(request.cookies.get(SESSION_COOKIE)?.value);
+  if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+
+  const accountId = new URL(request.url).searchParams.get("account");
+  if (!accountId) return NextResponse.json({ error: "missing_account" }, { status: 400 });
+
+  const [row] = await sql`
+    select a.ig_user_id, a.page_id, u.token_enc
+    from ig_accounts a
+    join fb_users u on u.id = a.fb_user_id
+    where a.id = ${accountId} and u.id = ${session.userId}
+  `;
+  if (!row) return NextResponse.json({ error: "not_found" }, { status: 404 });
+
+  try {
+    const pages = await fetchPages(decrypt(row.token_enc));
+    const page = pages.find((p) => p.id === row.page_id);
+    if (!page?.access_token) {
+      return NextResponse.json({ error: "no_page_token" }, { status: 502 });
+    }
+    return NextResponse.json(await fetchAccountInsights(row.ig_user_id, page.access_token));
+  } catch (err) {
+    console.error("Account insights failed:", err);
+    return NextResponse.json({ error: "insights_failed" }, { status: 502 });
+  }
+}
