@@ -34,3 +34,21 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Local Facebook login with ngrok
+
+Instagram OAuth needs an HTTPS redirect URI, so local dev runs behind an ngrok tunnel.
+
+1. Install ngrok (`brew install ngrok`) and authenticate once: `ngrok config add-authtoken <token>`.
+2. Start the app: `npm run dev`.
+3. In another terminal, start the tunnel: `npm run tunnel` (forwards port 3000).
+4. Copy the `https://…ngrok…` forwarding URL into `.env.local`:
+   `FB_REDIRECT_URI=https://<domain>/api/auth/facebook/callback`
+   Copy the other variables from `.env.example`.
+5. Add the same redirect URI in the Meta app dashboard: Facebook Login for Business → Settings → Valid OAuth Redirect URIs.
+6. Open the ngrok URL in the browser and click **Login with Facebook**. The Facebook user must manage a Page with an Instagram Business or Creator account linked.
+
+Notes:
+- Free ngrok URLs change on every restart. Update `FB_REDIRECT_URI` and the Meta dashboard each time, or use a reserved domain (`ngrok http 3000 --url=<your-domain>`).
+- Free ngrok shows a one-time interstitial page on first visit. Click through it; the redirect still completes.
+- Open the app through the ngrok URL, not `localhost`, or the OAuth redirect will not match.
