@@ -3,7 +3,7 @@
 export default function BarChart({ data, yLabel, xLabel, color = "#c13584", height = 240 }) {
   const W = 600;
   const H = height;
-  const padL = 48;
+  const padL = 68;
   const padR = 12;
   const padT = 12;
   const padB = 52;
@@ -45,7 +45,7 @@ export default function BarChart({ data, yLabel, xLabel, color = "#c13584", heig
         const x = padL + i * slot + (slot - barW) / 2;
         const y = padT + plotH - h;
         return (
-          <g key={d.label}>
+          <g key={`bar-${i}`}>
             <rect x={x} y={y} width={barW} height={Math.max(h, value > 0 ? 1 : 0)} fill={color}>
               <title>{`${d.label}: ${value.toLocaleString()}`}</title>
             </rect>

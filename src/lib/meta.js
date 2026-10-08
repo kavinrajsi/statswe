@@ -194,3 +194,12 @@ export async function fetchAccountInsights(igUserId, pageToken, days = 30) {
   const series = Object.values(byDate).sort((a, b) => a.date.localeCompare(b.date));
   return { days: series, views, error };
 }
+
+// Public profile + recent media of another Business/Creator account, looked up by username.
+// Called with the Page token of one of the logged-in user's IG accounts.
+export async function fetchBusinessDiscovery(igUserId, pageToken, username) {
+  const media = "media.limit(12){id,caption,media_type,media_url,thumbnail_url,permalink,timestamp,like_count,comments_count}";
+  const fields = `business_discovery.username(${username}){username,name,biography,profile_picture_url,followers_count,follows_count,media_count,${media}}`;
+  const json = await getJson(`${GRAPH}/${igUserId}?fields=${encodeURIComponent(fields)}`, pageToken);
+  return json.business_discovery;
+}

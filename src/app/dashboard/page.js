@@ -7,6 +7,7 @@ import { sql } from "@/lib/db";
 import { readSession, SESSION_COOKIE } from "@/lib/session";
 import PostGrid from "./PostGrid";
 import AccountInsights from "./AccountInsights";
+import { LookupForm, LookupGate, LookupProvider, LookupResults } from "./LookupBox";
 
 export default function Dashboard({ searchParams }) {
   return (
@@ -49,7 +50,14 @@ async function DashboardContent({ searchParams }) {
   const posts = await fetchPosts(active.id, tab);
 
   return (
+    <LookupProvider>
     <Shell>
+      <div className="px-4 pt-6 sm:px-0">
+        <LookupForm />
+      </div>
+      <LookupResults />
+
+      <LookupGate>
       {/* Profile header */}
       <header className="flex items-start gap-6 px-4 pt-8 pb-6 sm:gap-20 sm:px-0 sm:pt-14 sm:pb-11">
         <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-full bg-[#efefef] sm:h-[150px] sm:w-[150px]">
@@ -128,7 +136,9 @@ async function DashboardContent({ searchParams }) {
       ) : (
         <PostGrid posts={posts} />
       )}
+      </LookupGate>
     </Shell>
+    </LookupProvider>
   );
 }
 
