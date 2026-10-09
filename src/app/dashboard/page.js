@@ -7,6 +7,7 @@ import { sql } from "@/lib/db";
 import { readSession, SESSION_COOKIE } from "@/lib/session";
 import PostGrid from "./PostGrid";
 import AccountInsights from "./AccountInsights";
+import MonthlyPosts from "./MonthlyPosts";
 import { LookupForm, LookupGate, LookupProvider, LookupResults } from "./LookupBox";
 
 export default function Dashboard({ searchParams }) {
@@ -47,7 +48,10 @@ async function DashboardContent({ searchParams }) {
   const { account: accountParam, tab: tabParam } = await searchParams;
   const active = accounts.find((a) => a.id === accountParam) ?? accounts[0];
   const tab = TABS.find((t) => t.key === tabParam)?.key ?? "posts";
-  const posts = await fetchPosts(active.id, tab);
+  const [posts, months] = await Promise.all([
+    fetchPosts(active.id, tab),
+    fetchMonthlyCounts(active.id),
+  ]);
 
   return (
     <LookupProvider>
@@ -115,6 +119,8 @@ async function DashboardContent({ searchParams }) {
 
       <AccountInsights key={active.id} accountId={active.id} />
 
+      <MonthlyPosts months={months} />
+
       {/* Tab bar */}
       <nav className="flex justify-center gap-12 border-t border-[#dbdbdb]">
         {TABS.map(({ key, label, Icon }) => (
@@ -153,6 +159,18 @@ const EMPTY = {
   reels: "No reels found for this account.",
   tagged: "No tagged posts found. Tagged posts only appear if Meta grants this app access to them.",
 };
+
+// Own posts per calendar month (UTC), with the REELS subset. Tagged posts are excluded.
+async function fetchMonthlyCounts(accountId) {
+  return sql`
+    select to_char(date_trunc('month', ts), 'YYYY-MM') as month,
+           count(*)::int as total,
+           count(*) filter (where media_product_type = 'REELS')::int as reels
+    from ig_posts
+    where account_id = ${accountId} and source = 'own'
+    group by 1
+    order by 1`;
+}
 
 // Posts = own feed posts (not reels). Reels = own REELS. Tagged = media where the account is tagged.
 async function fetchPosts(accountId, tab) {
