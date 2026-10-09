@@ -187,6 +187,41 @@ export async function fetchAccountInsights(igUserId, pageToken, sinceSec) {
   return { days: series, error };
 }
 
+// Audience breakdown (age, country, city) for followers or reached accounts. Meta uses a named timeframe, not dates.
+// rows: [{ key, value }]. Null if Meta refuses it.
+export async function fetchDemographics(igUserId, pageToken, { metric, timeframe, breakdown }) {
+  try {
+    const json = await getJson(
+      `${GRAPH}/${igUserId}/insights?metric=${metric}&metric_type=total_value&period=lifetime&timeframe=${timeframe}&breakdown=${breakdown}`,
+      pageToken
+    );
+    const results = json.data?.[0]?.total_value?.breakdowns?.[0]?.results ?? [];
+    return results.map((r) => ({ key: r.dimension_values.join("/"), value: r.value ?? 0 }));
+  } catch {
+    return null;
+  }
+}
+
+// Followers' online activity per hour (UTC) for each day of the last 30 days. Null if Meta refuses it.
+// Returns [{ end_time, hours: [24 counts] }] for days that have data.
+export async function fetchOnlineFollowers(igUserId, pageToken) {
+  const now = Math.floor(Date.now() / 1000);
+  try {
+    const json = await getJson(
+      `${GRAPH}/${igUserId}/insights?metric=online_followers&period=lifetime&since=${now - 30 * 86400}&until=${now}`,
+      pageToken
+    );
+    return (json.data?.[0]?.values ?? [])
+      .filter((v) => v.value && Object.keys(v.value).length > 0)
+      .map((v) => ({
+        end_time: v.end_time,
+        hours: Array.from({ length: 24 }, (_, h) => v.value[h] ?? 0),
+      }));
+  } catch {
+    return null;
+  }
+}
+
 const MAX_WINDOW_SEC = 30 * 86400;
 
 // Splits [since, until) into windows Meta accepts (at most 30 days each).

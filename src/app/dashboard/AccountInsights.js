@@ -9,6 +9,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import BarChart from "./BarChart";
 import AudienceInsights from "./AudienceInsights";
+import TopContent from "./TopContent";
+import Demographics from "./Demographics";
+import ActiveTimes from "./ActiveTimes";
 import MonthlyMetrics from "./MonthlyMetrics";
 import { PeriodToggle } from "./PeriodToggle";
 import FollowersGrowth from "./FollowersGrowth";
@@ -18,7 +21,7 @@ import FollowersGrowth from "./FollowersGrowth";
 export default function AccountInsights({ accountId, children }) {
   const [data, setData] = useState(null);
   const [failed, setFailed] = useState(false);
-  const [chartPeriod, setChartPeriod] = useState("30d");
+  const [chartPeriod, setChartPeriod] = useState("mtd");
 
   useEffect(() => {
     let cancelled = false;
@@ -89,6 +92,12 @@ export default function AccountInsights({ accountId, children }) {
       />
 
       <AudienceInsights accountId={accountId} />
+
+      <TopContent accountId={accountId} />
+
+      <Demographics accountId={accountId} />
+
+      <ActiveTimes accountId={accountId} />
 
       <div className="grid gap-6 lg:grid-cols-2">
         {data.monthly && <MonthlyMetrics rows={data.monthly} />}

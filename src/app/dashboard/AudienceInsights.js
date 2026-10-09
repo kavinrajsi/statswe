@@ -12,7 +12,7 @@ import { PeriodMenu } from "./PeriodMenu";
 
 // Views and interactions for the account, with a period picker. Follower split comes from Meta's breakdowns.
 export default function AudienceInsights({ accountId }) {
-  const [period, setPeriod] = useState("30d");
+  const [period, setPeriod] = useState("mtd");
   const [data, setData] = useState(null);
   const [failed, setFailed] = useState(false);
 
