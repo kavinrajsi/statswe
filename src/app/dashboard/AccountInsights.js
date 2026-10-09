@@ -1,12 +1,19 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { ChevronDown } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import BarChart from "./BarChart";
-import FollowersGrowth from "./FollowersGrowth";
 import FollowersByMonth from "./FollowersByMonth";
+import FollowersGrowth from "./FollowersGrowth";
 
 // Last 30 days of account-level insights, fetched live from Meta.
-export default function AccountInsights({ accountId }) {
+// children are rendered in the second row, next to the followers-by-month card.
+export default function AccountInsights({ accountId, children }) {
   const [data, setData] = useState(null);
   const [failed, setFailed] = useState(false);
 
@@ -26,77 +33,113 @@ export default function AccountInsights({ accountId }) {
 
   if (failed) {
     return (
-      <section className="mx-4 mb-6 rounded-lg border border-[#dbdbdb] p-4 text-sm text-[#ed4956] sm:mx-0">
-        Could not load account insights. Log in again if this persists.
-      </section>
+      <div className="space-y-6">
+        <Alert variant="destructive">
+          <AlertDescription>Could not load account insights. Log in again if this persists.</AlertDescription>
+        </Alert>
+        <div className="grid gap-6 lg:grid-cols-2">{children}</div>
+      </div>
     );
   }
   if (!data) {
     return (
-      <section className="mx-4 mb-6 rounded-lg border border-[#dbdbdb] p-4 text-sm text-[#8e8e8e] sm:mx-0">
-        Loading account insights…
-      </section>
+      <div className="space-y-6">
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+          <Skeleton className="h-24" />
+          <Skeleton className="h-24" />
+          <Skeleton className="h-24" />
+        </div>
+        <div className="grid gap-6 lg:grid-cols-2">
+          <Skeleton className="h-80" />
+          <Skeleton className="h-80" />
+        </div>
+      </div>
     );
   }
 
   const days = data.days ?? [];
-  const maxReach = Math.max(1, ...days.map((d) => d.reach ?? 0));
   const reachTotal = days.reduce((sum, d) => sum + (d.reach ?? 0), 0);
 
   return (
-    <>
-    <section className="mx-4 mb-6 rounded-lg border border-[#dbdbdb] p-4 sm:mx-0">
-      <div className="mb-4 flex flex-wrap gap-x-8 gap-y-2 text-sm">
-        <Stat label="Last 30 days · Reach" value={reachTotal} />
-        <Stat label="Views" value={data.views} />
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 gap-4">
+        <StatCard title="Reach · last 30 days" value={reachTotal} />
+        <StatCard title="Views · last 30 days" value={data.views} />
       </div>
 
-      {days.length === 0 ? (
-        <p className="text-sm text-[#8e8e8e]">No daily data returned by Meta for this window.</p>
-      ) : (
-        <>
+      <div className="grid gap-6 lg:grid-cols-2">
+        <ReachCard days={days} error={data.error} />
+        <FollowersGrowth points={followerSeries(days, data.followers)} periodLabel="Last 30 days" />
+        {data.followerMonths && <FollowersByMonth months={data.followerMonths} />}
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function StatCard({ title, value }) {
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardDescription>{title}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <p className="text-2xl font-semibold">{format(value)}</p>
+      </CardContent>
+    </Card>
+  );
+}
+
+function ReachCard({ days, error }) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Reach</CardTitle>
+        <CardDescription>Daily reach, last 30 days</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {days.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No daily data returned by Meta for this window.</p>
+        ) : (
           <BarChart
             data={days.map((d) => ({ label: d.date, short: d.date.slice(5), value: d.reach }))}
             yLabel="Reach"
             xLabel="Date"
-            color="#c13584"
           />
+        )}
 
-          <details className="mt-4" open>
-            <summary className="cursor-pointer text-xs font-semibold text-[#262626]">
+        {days.length > 0 && (
+          <Collapsible>
+            <CollapsibleTrigger className="flex w-full items-center justify-between text-sm font-medium">
               Day by day
-            </summary>
-            <div className="mt-3 max-h-64 overflow-y-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-left text-xs text-[#8e8e8e]">
-                    <th className="py-1 font-normal">Date</th>
-                    <th className="py-1 text-right font-normal">Reach</th>
-                    <th className="py-1 text-right font-normal">Followers (net)</th>
-                  </tr>
-                </thead>
-                <tbody>
+              <ChevronDown className="h-4 w-4" />
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-3 max-h-64 overflow-y-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead className="text-right">Reach</TableHead>
+                    <TableHead className="text-right">Followers (net)</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {[...days].reverse().map((d) => (
-                    <tr key={d.date} className="border-t border-[#efefef]">
-                      <td className="py-1.5">{d.date}</td>
-                      <td className="py-1.5 text-right">{format(d.reach)}</td>
-                      <td className="py-1.5 text-right">{signedFormat(d.follower_count)}</td>
-                    </tr>
+                    <TableRow key={d.date}>
+                      <TableCell>{d.date}</TableCell>
+                      <TableCell className="text-right">{format(d.reach)}</TableCell>
+                      <TableCell className="text-right">{signedFormat(d.follower_count)}</TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
-            </div>
-          </details>
-        </>
-      )}
+                </TableBody>
+              </Table>
+            </CollapsibleContent>
+          </Collapsible>
+        )}
 
-      {data.error && (
-        <p className="mt-3 text-xs text-[#ed4956]">Meta returned: {data.error}</p>
-      )}
-    </section>
-    <FollowersGrowth points={followerSeries(days, data.followers)} periodLabel="Last 30 days" />
-    {data.followerMonths && <FollowersByMonth months={data.followerMonths} />}
-    </>
+        {error && <p className="text-xs text-destructive">Meta returned: {error}</p>}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -110,17 +153,6 @@ function followerSeries(days, current) {
     total -= days[i].follower_count ?? 0;
   }
   return series;
-}
-
-function Stat({ label, value, signed }) {
-  return (
-    <div>
-      <p className="text-xs text-[#8e8e8e]">{label}</p>
-      <p className="text-lg font-semibold text-[#262626]">
-        {signed ? signedFormat(value) : format(value)}
-      </p>
-    </div>
-  );
 }
 
 function format(value) {

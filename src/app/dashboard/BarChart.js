@@ -5,7 +5,7 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/
 
 // Bar chart on the shadcn/ui Chart component (Recharts underneath). Same props as before.
 // data: [{ label, short?, value }]. short is the x-axis tick text; label is shown in the tooltip.
-export default function BarChart({ data, yLabel, xLabel, color = "#c13584", height = 240 }) {
+export default function BarChart({ data, yLabel, xLabel, color = "var(--chart-1)", height = 240 }) {
   const config = { value: { label: yLabel, color } };
   const shortByLabel = new Map(data.map((d) => [d.label, d.short ?? d.label]));
   const labelEvery = Math.max(1, Math.ceil(data.length / 8));

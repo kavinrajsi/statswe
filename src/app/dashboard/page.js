@@ -1,18 +1,23 @@
 import { Suspense } from "react";
-import Image from "next/image";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
+import Link from "next/link";
 import { sql } from "@/lib/db";
 import { readSession, SESSION_COOKIE } from "@/lib/session";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AppBar } from "./AppBar";
+import { ProfileCard } from "./ProfileCard";
 import PostGrid from "./PostGrid";
 import AccountInsights from "./AccountInsights";
 import RecentMonths from "./RecentMonths";
-import { LookupForm, LookupGate, LookupProvider, LookupResults } from "./LookupBox";
+import { LookupGate, LookupProvider, LookupResults } from "./LookupBox";
+import { Grid2x2, Play, Tag } from "lucide-react";
 
 export default function Dashboard({ searchParams }) {
   return (
-    <Suspense fallback={<p className="p-8 text-center text-sm text-[#8e8e8e]">Loading…</p>}>
+    <Suspense fallback={<p className="p-8 text-center text-sm text-muted-foreground">Loading…</p>}>
       <DashboardContent searchParams={searchParams} />
     </Suspense>
   );
@@ -33,14 +38,22 @@ async function DashboardContent({ searchParams }) {
   if (accounts.length === 0) {
     return (
       <Shell>
-        <div className="py-20 text-center">
-          <h1 className="mb-2 text-xl font-semibold">No Instagram account found</h1>
-          <p className="mx-auto max-w-sm text-sm text-[#8e8e8e]">
-            Your Facebook login worked, but none of your Pages has an Instagram Business or
-            Creator account linked. Link one, then log in again.
-          </p>
-          <LogoutButton />
-        </div>
+        <Card className="mx-auto mt-16 max-w-md text-center">
+          <CardHeader>
+            <CardTitle>No Instagram account found</CardTitle>
+            <CardDescription>
+              Your Facebook login worked, but none of your Pages has an Instagram Business or Creator account
+              linked. Link one, then log in again.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form action="/api/auth/logout" method="post">
+              <Button type="submit" variant="outline">
+                Log out
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
       </Shell>
     );
   }
@@ -55,103 +68,51 @@ async function DashboardContent({ searchParams }) {
 
   return (
     <LookupProvider>
-    <Shell>
-      <div className="px-4 pt-6 sm:px-0">
-        <LookupForm />
-      </div>
-      <LookupResults />
+      <Shell appBar={<AppBar accounts={accounts} activeId={active.id} tab={tab} />}>
+        <LookupResults />
 
-      <LookupGate>
-      {/* Profile header */}
-      <header className="flex items-start gap-6 px-4 pt-8 pb-6 sm:gap-20 sm:px-0 sm:pt-14 sm:pb-11">
-        <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-full bg-[#efefef] sm:h-[150px] sm:w-[150px]">
-          {active.profile_picture_url && (
-            <Image
-              src={active.profile_picture_url}
-              alt={`@${active.username}`}
-              fill
-              sizes="150px"
-              className="object-cover"
-            />
+        <LookupGate>
+          <ProfileCard
+            username={active.username}
+            name={active.name}
+            pictureUrl={active.profile_picture_url}
+            posts={active.media_count ?? posts.length}
+            followers={active.followers_count}
+            following={active.follows_count}
+          />
+
+          <AccountInsights key={active.id} accountId={active.id}>
+            <RecentMonths months={months} />
+          </AccountInsights>
+
+          <Tabs value={tab} className="pt-2">
+            <TabsList className="grid w-full grid-cols-3">
+              {TABS.map(({ key, label, Icon }) => (
+                <TabsTrigger key={key} value={key} asChild>
+                  <Link href={`/dashboard?account=${active.id}&tab=${key}`}>
+                    <Icon className="h-4 w-4" />
+                    {label}
+                  </Link>
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+
+          {posts.length === 0 ? (
+            <p className="py-16 text-center text-sm text-muted-foreground">{EMPTY[tab]}</p>
+          ) : (
+            <PostGrid posts={posts} />
           )}
-        </div>
-
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-4">
-            <h1 className="text-xl font-normal">{active.username}</h1>
-            <LogoutButton />
-          </div>
-
-          <ul className="mt-5 hidden gap-10 text-base sm:flex">
-            <Stat value={active.media_count ?? posts.length} label="posts" />
-            <Stat value={active.followers_count} label="followers" />
-            <Stat value={active.follows_count} label="following" />
-          </ul>
-
-          {active.name && <p className="mt-5 text-sm font-semibold">{active.name}</p>}
-        </div>
-      </header>
-
-      {/* Mobile stats row */}
-      <ul className="flex justify-around border-t border-[#dbdbdb] py-3 text-sm sm:hidden">
-        <Stat value={active.media_count ?? posts.length} label="posts" />
-        <Stat value={active.followers_count} label="followers" />
-        <Stat value={active.follows_count} label="following" />
-      </ul>
-
-      {accounts.length > 1 && (
-        <nav className="flex flex-wrap gap-2 px-4 pb-4 sm:px-0">
-          {accounts.map((a) => (
-            <Link
-              key={a.id}
-              href={`/dashboard?account=${a.id}&tab=${tab}`}
-              className={`rounded-lg px-3 py-1 text-sm font-semibold ${
-                a.id === active.id
-                  ? "bg-[#262626] text-white"
-                  : "bg-[#efefef] text-[#262626]"
-              }`}
-            >
-              @{a.username}
-            </Link>
-          ))}
-        </nav>
-      )}
-
-      <AccountInsights key={active.id} accountId={active.id} />
-
-      <RecentMonths months={months} />
-
-      {/* Tab bar */}
-      <nav className="flex justify-center gap-12 border-t border-[#dbdbdb]">
-        {TABS.map(({ key, label, Icon }) => (
-          <Link
-            key={key}
-            href={`/dashboard?account=${active.id}&tab=${key}`}
-            className={`-mt-px flex items-center gap-2 border-t px-2 py-3 text-xs font-semibold tracking-[0.12em] ${
-              key === tab ? "border-[#262626] text-[#262626]" : "border-transparent text-[#8e8e8e]"
-            }`}
-          >
-            <Icon />
-            {label}
-          </Link>
-        ))}
-      </nav>
-
-      {posts.length === 0 ? (
-        <p className="py-16 text-center text-sm text-[#8e8e8e]">{EMPTY[tab]}</p>
-      ) : (
-        <PostGrid posts={posts} />
-      )}
-      </LookupGate>
-    </Shell>
+        </LookupGate>
+      </Shell>
     </LookupProvider>
   );
 }
 
 const TABS = [
-  { key: "posts", label: "POSTS", Icon: GridIcon },
-  { key: "reels", label: "REELS", Icon: ReelIcon },
-  { key: "tagged", label: "TAGGED", Icon: TagIcon },
+  { key: "posts", label: "Posts", Icon: Grid2x2 },
+  { key: "reels", label: "Reels", Icon: Play },
+  { key: "tagged", label: "Tagged", Icon: Tag },
 ];
 
 const EMPTY = {
@@ -199,58 +160,11 @@ async function fetchPosts(accountId, tab) {
     order by ts desc`;
 }
 
-function Shell({ children }) {
+function Shell({ appBar, children }) {
   return (
-    <div className="min-h-screen bg-white font-sans text-[#262626]">
-      <main className="mx-auto max-w-[935px]">{children}</main>
+    <div className="min-h-screen bg-background text-foreground">
+      {appBar}
+      <main className="mx-auto max-w-6xl space-y-6 px-4 py-6">{children}</main>
     </div>
-  );
-}
-
-function Stat({ value, label }) {
-  return (
-    <li className="text-center sm:text-left">
-      <span className="font-semibold">{value ?? "–"}</span>{" "}
-      <span className="text-[#262626] sm:text-[#262626]">{label}</span>
-    </li>
-  );
-}
-
-function LogoutButton() {
-  return (
-    <form action="/api/auth/logout" method="post">
-      <button className="rounded-lg bg-[#efefef] px-4 py-1.5 text-sm font-semibold hover:bg-[#dbdbdb]">
-        Log out
-      </button>
-    </form>
-  );
-}
-
-function GridIcon() {
-  return (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <rect x="3" y="3" width="7" height="7" />
-      <rect x="14" y="3" width="7" height="7" />
-      <rect x="3" y="14" width="7" height="7" />
-      <rect x="14" y="14" width="7" height="7" />
-    </svg>
-  );
-}
-
-function ReelIcon() {
-  return (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <rect x="2" y="2" width="20" height="20" rx="4" />
-      <path d="M10 8.5v7l6-3.5z" fill="currentColor" />
-    </svg>
-  );
-}
-
-function TagIcon() {
-  return (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M20 12a8 8 0 1 0-16 0 8 8 0 0 0 16 0z" />
-      <path d="M12 8v8M8 12h8" />
-    </svg>
   );
 }

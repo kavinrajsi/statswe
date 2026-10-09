@@ -6,7 +6,7 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/
 // Line chart on the shadcn/ui Chart component (Recharts underneath). Same props as before.
 // The y-axis is fitted to the data range instead of starting at zero, so small changes stay visible.
 // data: [{ label, short?, value }]. short is the x-axis tick text; label is shown in the tooltip.
-export default function LineChart({ data, yLabel, xLabel, color = "#c13584", height = 200 }) {
+export default function LineChart({ data, yLabel, xLabel, color = "var(--chart-1)", height = 200 }) {
   const config = { value: { label: yLabel, color } };
   const shortByLabel = new Map(data.map((d) => [d.label, d.short ?? d.label]));
   const labelEvery = Math.max(1, Math.ceil(data.length / 8));

@@ -1,3 +1,5 @@
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { monthLabel, recentMonthKeys } from "./months";
 
 // Posts per month for the current calendar month and the five before it, oldest first.
@@ -22,32 +24,31 @@ export default function RecentMonths({ months, showReels = true, coveredFrom = n
   const incomplete = coveredFrom !== null && coveredFrom >= keys[0];
 
   return (
-    <section className="mx-4 mb-6 rounded-lg border border-[#dbdbdb] p-4 sm:mx-0">
-      <div className="mb-4 flex flex-wrap gap-x-8 gap-y-2 text-sm">
-        <div>
-          <p className="text-xs text-[#8e8e8e]">Last 6 months · Total posts</p>
-          <p className="text-lg font-semibold text-[#262626]">{total.toLocaleString()}</p>
-        </div>
-      </div>
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Posts · last 6 months</CardTitle>
+        <CardDescription>{total.toLocaleString()} posts in total</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <ul className="grid grid-cols-3 gap-3 sm:grid-cols-6">
+          {recent.map((m) => (
+            <li key={m.month} className="rounded-lg border bg-muted/40 p-3 text-center">
+              <p className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
+                {m.label}
+                {m.current && <Badge variant="secondary" className="px-1 py-0 text-[10px]">so far</Badge>}
+              </p>
+              <p className="mt-1 text-xl font-semibold">{m.total.toLocaleString()}</p>
+              {showReels && <p className="text-xs text-muted-foreground">{m.reels.toLocaleString()} reels</p>}
+            </li>
+          ))}
+        </ul>
 
-      <ul className="grid grid-cols-3 gap-3 sm:grid-cols-6">
-        {recent.map((m) => (
-          <li key={m.month} className="rounded-lg bg-[#fafafa] p-3 text-center">
-            <p className="text-xs text-[#8e8e8e]">
-              {m.label}
-              {m.current && " · so far"}
-            </p>
-            <p className="mt-1 text-xl font-semibold text-[#262626]">{m.total.toLocaleString()}</p>
-            {showReels && <p className="text-xs text-[#8e8e8e]">{m.reels.toLocaleString()} reels</p>}
-          </li>
-        ))}
-      </ul>
-
-      {incomplete && (
-        <p className="mt-3 text-xs text-[#8e8e8e]">
-          Counts for {monthLabel(coveredFrom)} and earlier may be incomplete: not all posts could be loaded.
-        </p>
-      )}
-    </section>
+        {incomplete && (
+          <p className="text-xs text-muted-foreground">
+            Counts for {monthLabel(coveredFrom)} and earlier may be incomplete: not all posts could be loaded.
+          </p>
+        )}
+      </CardContent>
+    </Card>
   );
 }

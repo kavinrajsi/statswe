@@ -1,3 +1,5 @@
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import LineChart from "./LineChart";
 import { monthLabel } from "./months";
 
@@ -23,67 +25,73 @@ export default function FollowersByMonth({ months, label = "Followers by month",
   const growth = net !== null && first > 0 ? (net / first) * 100 : null;
 
   return (
-    <section className="mx-4 mb-6 rounded-lg border border-[#dbdbdb] p-4 sm:mx-0">
-      <p className="mb-4 text-xs font-semibold text-[#8e8e8e]">{label}</p>
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">{label}</CardTitle>
+        {showSummary && <CardDescription>Follower total at the end of each month</CardDescription>}
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {showSummary && (
+          <>
+            <div className="flex flex-wrap gap-x-8 gap-y-2">
+              <Stat label="Followers now" value={now.toLocaleString()} />
+              <Stat label="Net change" value={net === null ? "–" : signed(net)} />
+              <Stat
+                label="Growth"
+                value={growth === null ? "–" : `${growth > 0 ? "+" : ""}${growth.toFixed(2)}%`}
+              />
+            </div>
+            {known.length < 2 && note && <p className="text-sm text-muted-foreground">{note}</p>}
+          </>
+        )}
 
-      {showSummary && (
-        <>
-          <div className="mb-4 flex flex-wrap gap-x-8 gap-y-2 text-sm">
-            <Stat label="Followers now" value={now.toLocaleString()} />
-            <Stat label="Net change" value={net === null ? "–" : signed(net)} />
-            <Stat
-              label="Growth"
-              value={growth === null ? "–" : `${growth > 0 ? "+" : ""}${growth.toFixed(2)}%`}
-            />
+        {known.length >= 2 && (
+          <LineChart
+            data={known.map((m) => ({
+              label: monthLabel(m.month),
+              short: monthLabel(m.month).slice(0, 3),
+              value: m.followers,
+            }))}
+            yLabel="Followers"
+            xLabel="Month"
+          />
+        )}
+
+        <details className="group">
+          <summary className="cursor-pointer text-sm font-medium">Month by month</summary>
+          <div className="mt-3 max-h-64 overflow-y-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Month</TableHead>
+                  <TableHead className="text-right">Followers</TableHead>
+                  <TableHead className="text-right">Change</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {[...rows].reverse().map((r) => (
+                  <TableRow key={r.month}>
+                    <TableCell>{monthLabel(r.month)}</TableCell>
+                    <TableCell className="text-right">
+                      {r.followers === null ? "–" : r.followers.toLocaleString()}
+                    </TableCell>
+                    <TableCell className="text-right">{r.change === null ? "–" : signed(r.change)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </div>
-          {known.length < 2 && note && <p className="mb-4 text-sm text-[#8e8e8e]">{note}</p>}
-        </>
-      )}
-
-      {known.length >= 2 && (
-        <LineChart
-          data={known.map((m) => ({
-            label: monthLabel(m.month),
-            short: monthLabel(m.month).slice(0, 3),
-            value: m.followers,
-          }))}
-          yLabel="Followers"
-          xLabel="Month"
-        />
-      )}
-
-      <details className="mt-4" open>
-        <summary className="cursor-pointer text-xs font-semibold text-[#262626]">Month by month</summary>
-        <div className="mt-3 max-h-64 overflow-y-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-xs text-[#8e8e8e]">
-                <th className="py-1 font-normal">Month</th>
-                <th className="py-1 text-right font-normal">Followers</th>
-                <th className="py-1 text-right font-normal">Change</th>
-              </tr>
-            </thead>
-            <tbody>
-              {[...rows].reverse().map((r) => (
-                <tr key={r.month} className="border-t border-[#efefef]">
-                  <td className="py-1.5">{monthLabel(r.month)}</td>
-                  <td className="py-1.5 text-right">{r.followers === null ? "–" : r.followers.toLocaleString()}</td>
-                  <td className="py-1.5 text-right">{r.change === null ? "–" : signed(r.change)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </details>
-    </section>
+        </details>
+      </CardContent>
+    </Card>
   );
 }
 
 function Stat({ label, value }) {
   return (
     <div>
-      <p className="text-xs text-[#8e8e8e]">{label}</p>
-      <p className="text-lg font-semibold text-[#262626]">{value}</p>
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="text-lg font-semibold">{value}</p>
     </div>
   );
 }

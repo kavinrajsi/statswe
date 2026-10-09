@@ -2,42 +2,34 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import { ExternalLink, Heart, Layers, MessageCircle, Play } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import { Separator } from "@/components/ui/separator";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import BarChart from "./BarChart";
 
-// Grid of post tiles. Clicking a tile opens the insights drawer from the right.
+// Grid of post tiles. Clicking a tile opens the insights sheet from the right.
 export default function PostGrid({ posts }) {
   const [selected, setSelected] = useState(null);
-  const [open, setOpen] = useState(false);
-
-  function openPost(post) {
-    setSelected(post);
-    setOpen(true);
-  }
-
-  function close() {
-    setOpen(false);
-    // Keep the post mounted until the slide-out finishes
-    setTimeout(() => setSelected(null), 300);
-  }
-
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e) => e.key === "Escape" && close();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open]);
 
   return (
     <>
-      <ul className="grid grid-cols-3 gap-[3px] sm:gap-7">
+      <ul className="grid grid-cols-3 gap-1 sm:gap-4">
         {posts.map((post) => (
-          <PostTile key={post.ig_id} post={post} onOpen={() => openPost(post)} />
+          <PostTile key={post.ig_id} post={post} onOpen={() => setSelected(post)} />
         ))}
       </ul>
 
-      {selected && (
-        <InsightsDrawer key={selected.ig_id} post={selected} open={open} onClose={close} />
-      )}
+      <Sheet open={selected !== null} onOpenChange={(open) => !open && setSelected(null)}>
+        <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-md">
+          {selected && <PostInsights key={selected.ig_id} post={selected} />}
+        </SheetContent>
+      </Sheet>
     </>
   );
 }
@@ -50,7 +42,7 @@ function PostTile({ post, onOpen }) {
       <button
         type="button"
         onClick={onOpen}
-        className="group relative block aspect-square w-full overflow-hidden bg-[#efefef]"
+        className="group relative block aspect-square w-full overflow-hidden rounded-md bg-muted"
       >
         {image && (
           <Image
@@ -64,21 +56,21 @@ function PostTile({ post, onOpen }) {
 
         {post.media_type === "CAROUSEL_ALBUM" && (
           <span className="absolute top-2 right-2 text-white drop-shadow">
-            <CarouselIcon />
+            <Layers className="h-4 w-4" />
           </span>
         )}
         {post.media_type === "VIDEO" && (
           <span className="absolute top-2 right-2 text-white drop-shadow">
-            <PlayIcon />
+            <Play className="h-4 w-4" />
           </span>
         )}
 
-        <span className="absolute inset-0 hidden items-center justify-center gap-6 bg-black/30 text-base font-semibold text-white group-hover:flex">
+        <span className="absolute inset-0 hidden items-center justify-center gap-6 bg-black/40 text-base font-semibold text-white group-hover:flex">
           <span className="flex items-center gap-1.5">
-            <HeartIcon /> {post.like_count ?? 0}
+            <Heart className="h-4 w-4" /> {post.like_count ?? 0}
           </span>
           <span className="flex items-center gap-1.5">
-            <CommentIcon /> {post.comments_count ?? 0}
+            <MessageCircle className="h-4 w-4" /> {post.comments_count ?? 0}
           </span>
         </span>
       </button>
@@ -86,7 +78,8 @@ function PostTile({ post, onOpen }) {
   );
 }
 
-function InsightsDrawer({ post, open, onClose }) {
+// Insights for one post, loaded when the sheet opens.
+function PostInsights({ post }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
@@ -120,194 +113,170 @@ function InsightsDrawer({ post, open, onClose }) {
 
   const m = data?.metrics ?? {};
   const f = data?.followers;
-  const views = m.views ?? null;
   const followerViews = f?.FOLLOWER ?? null;
   const nonFollowerViews = f?.NON_FOLLOWER ?? null;
-  const followerPct = pct(followerViews, (followerViews ?? 0) + (nonFollowerViews ?? 0));
-  const nonFollowerPct = pct(nonFollowerViews, (followerViews ?? 0) + (nonFollowerViews ?? 0));
+  const splitTotal = (followerViews ?? 0) + (nonFollowerViews ?? 0);
+  const followerPct = pct(followerViews, splitTotal);
+  const nonFollowerPct = pct(nonFollowerViews, splitTotal);
+  const thumb = post.thumbnail_url ?? post.media_url;
 
   return (
-    <div className="fixed inset-0 z-50">
-      <div
-        onClick={onClose}
-        className={`absolute inset-0 bg-black/60 transition-opacity duration-300 ${
-          open ? "opacity-100" : "opacity-0"
-        }`}
-      />
-      <aside
-        role="dialog"
-        aria-label="Post insights"
-        className={`absolute inset-y-0 right-0 flex w-full max-w-[420px] flex-col overflow-y-auto bg-[#000] text-[#f5f5f5] transition-transform duration-300 ${
-          open ? "translate-x-0" : "translate-x-full"
-        }`}
-      >
-        <div className="flex items-center justify-between border-b border-[#262626] px-5 py-4">
-          <h2 className="text-base font-semibold">Post insights</h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="text-2xl leading-none text-[#a8a8a8] hover:text-white"
-            aria-label="Close"
-          >
-            ×
-          </button>
-        </div>
+    <>
+      <SheetHeader>
+        <SheetTitle>Post insights</SheetTitle>
+        <SheetDescription>Metrics as reported by Instagram.</SheetDescription>
+      </SheetHeader>
 
-        <div className="flex gap-4 border-b border-[#262626] px-5 py-4">
-          <div className="relative h-16 w-16 shrink-0 overflow-hidden bg-[#262626]">
-            {(post.thumbnail_url ?? post.media_url) && (
-              <Image
-                src={post.thumbnail_url ?? post.media_url}
-                alt=""
-                fill
-                sizes="64px"
-                className="object-cover"
-              />
-            )}
-          </div>
-          <div className="min-w-0">
-            <p className="line-clamp-2 text-sm text-[#a8a8a8]">{post.caption ?? "No caption"}</p>
-            <a
-              href={post.permalink}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-2 inline-block text-xs font-semibold text-[#0095f6] hover:underline"
-            >
-              Open on Instagram ↗
+      <div className="flex gap-4 py-4">
+        <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-md bg-muted">
+          {thumb && <Image src={thumb} alt="" fill sizes="64px" className="object-cover" />}
+        </div>
+        <div className="min-w-0 space-y-2">
+          <p className="line-clamp-2 text-sm text-muted-foreground">{post.caption ?? "No caption"}</p>
+          <Button variant="link" size="sm" className="h-auto p-0" asChild>
+            <a href={post.permalink} target="_blank" rel="noopener noreferrer">
+              <ExternalLink className="h-3 w-3" />
+              Open on Instagram
             </a>
-          </div>
+          </Button>
         </div>
+      </div>
 
-        {loading && <p className="px-5 py-8 text-sm text-[#a8a8a8]">Loading insights…</p>}
-        {!loading && failed && (
-          <p className="px-5 py-8 text-sm text-[#ed4956]">
+      <Separator />
+
+      {loading && (
+        <div className="space-y-3 py-6">
+          <Skeleton className="h-6 w-full" />
+          <Skeleton className="h-24 w-full" />
+        </div>
+      )}
+      {!loading && failed && (
+        <Alert variant="destructive" className="my-4">
+          <AlertDescription>
             Could not load insights. Log in again so the app gets the insights permission.
-          </p>
-        )}
-        {!loading && !failed && data?.error && (
-          <p className="px-5 py-4 text-sm text-[#ed4956]">Meta returned: {data.error}</p>
-        )}
+          </AlertDescription>
+        </Alert>
+      )}
+      {!loading && !failed && data?.error && (
+        <Alert variant="destructive" className="my-4">
+          <AlertDescription>Meta returned: {data.error}</AlertDescription>
+        </Alert>
+      )}
 
-        {!loading && !failed && data && (
-          <div className="px-5">
-            <Section title="Views" value={views}>
-              <Bar label="Followers" percent={followerPct} />
-              <Bar label="Non-followers" percent={nonFollowerPct} />
-              {followerViews === null && (
-                <p className="py-3 text-xs text-[#a8a8a8]">
-                  Followers / non-followers split is not available from Meta for this post.
-                </p>
-              )}
-            </Section>
-
-            <Section title="Interactions" value={m.total_interactions}>
-              <Row label="Likes" value={m.likes} />
-              <Row label="Comments" value={m.comments} />
-              <Row label="Saves" value={m.saved} />
-              <Row label="Shares" value={m.shares} />
-            </Section>
-
-            <Section title="Reach" value={m.reach}>
-              <p className="py-3 text-xs text-[#a8a8a8]">
-                &quot;From Home&quot; and &quot;From profile&quot; breakdowns are not available from Meta&apos;s API.
+      {!loading && !failed && data && (
+        <div className="space-y-6 py-4">
+          <Section title="Views" value={m.views}>
+            <SplitBar label="Followers" percent={followerPct} />
+            <SplitBar label="Non-followers" percent={nonFollowerPct} />
+            {followerViews === null && (
+              <p className="text-xs text-muted-foreground">
+                Followers / non-followers split is not available from Meta for this post.
               </p>
-            </Section>
+            )}
+          </Section>
 
-            <section className="border-b border-[#262626] py-5">
-              <p className="mb-3 text-sm font-semibold">Day by day</p>
-              {history === null && <p className="text-xs text-[#a8a8a8]">Loading history…</p>}
-              {history !== null && history.length === 0 && (
-                <p className="text-xs text-[#a8a8a8]">
-                  No daily history yet. Snapshots are taken once a day, so this fills in over time.
-                </p>
-              )}
-              {history !== null && history.length > 0 && (
-                <div className="mb-4">
-                  <BarChart
-                    data={history.map((h) => ({
-                      label: h.date,
-                      short: h.date.slice(5),
-                      value: h.metrics?.reach,
-                    }))}
-                    yLabel="Reach"
-                    xLabel="Date"
-                    height={200}
-                  />
-                </div>
-              )}
-              {history !== null && history.length > 0 && (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-xs">
-                    <thead>
-                      <tr className="text-left text-[#a8a8a8]">
-                        <th className="py-1 pr-2 font-normal">Date</th>
-                        <th className="py-1 pr-2 text-right font-normal">Reach</th>
-                        <th className="py-1 pr-2 text-right font-normal">Likes</th>
-                        <th className="py-1 pr-2 text-right font-normal">Comments</th>
-                        <th className="py-1 pr-2 text-right font-normal">Shares</th>
-                        <th className="py-1 text-right font-normal">Saves</th>
-                      </tr>
-                    </thead>
-                    <tbody>
+          <Section title="Interactions" value={m.total_interactions}>
+            <Row label="Likes" value={m.likes} />
+            <Row label="Comments" value={m.comments} />
+            <Row label="Saves" value={m.saved} />
+            <Row label="Shares" value={m.shares} />
+          </Section>
+
+          <Section title="Reach" value={m.reach}>
+            <p className="text-xs text-muted-foreground">
+              &quot;From Home&quot; and &quot;From profile&quot; breakdowns are not available from Meta&apos;s API.
+            </p>
+          </Section>
+
+          <Separator />
+
+          <section className="space-y-3">
+            <p className="text-sm font-medium">Day by day</p>
+            {history === null && <Skeleton className="h-40 w-full" />}
+            {history !== null && history.length === 0 && (
+              <p className="text-xs text-muted-foreground">
+                No daily history yet. Snapshots are taken once a day, so this fills in over time.
+              </p>
+            )}
+            {history !== null && history.length > 0 && (
+              <>
+                <BarChart
+                  data={history.map((h) => ({
+                    label: h.date,
+                    short: h.date.slice(5),
+                    value: h.metrics?.reach,
+                  }))}
+                  yLabel="Reach"
+                  xLabel="Date"
+                  height={200}
+                />
+                <div className="max-h-64 overflow-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead className="text-right">Reach</TableHead>
+                        <TableHead className="text-right">Likes</TableHead>
+                        <TableHead className="text-right">Comments</TableHead>
+                        <TableHead className="text-right">Shares</TableHead>
+                        <TableHead className="text-right">Saves</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
                       {[...history].reverse().map((row) => (
-                        <tr key={row.date} className="border-t border-[#262626]">
-                          <td className="py-1.5 pr-2">{row.date}</td>
-                          <td className="py-1.5 pr-2 text-right">{format(row.metrics?.reach)}</td>
-                          <td className="py-1.5 pr-2 text-right">{format(row.metrics?.likes)}</td>
-                          <td className="py-1.5 pr-2 text-right">{format(row.metrics?.comments)}</td>
-                          <td className="py-1.5 pr-2 text-right">{format(row.metrics?.shares)}</td>
-                          <td className="py-1.5 text-right">{format(row.metrics?.saved)}</td>
-                        </tr>
+                        <TableRow key={row.date}>
+                          <TableCell>{row.date}</TableCell>
+                          <TableCell className="text-right">{format(row.metrics?.reach)}</TableCell>
+                          <TableCell className="text-right">{format(row.metrics?.likes)}</TableCell>
+                          <TableCell className="text-right">{format(row.metrics?.comments)}</TableCell>
+                          <TableCell className="text-right">{format(row.metrics?.shares)}</TableCell>
+                          <TableCell className="text-right">{format(row.metrics?.saved)}</TableCell>
+                        </TableRow>
                       ))}
-                    </tbody>
-                  </table>
+                    </TableBody>
+                  </Table>
                 </div>
-              )}
-              <p className="mt-2 text-[10px] text-[#a8a8a8]">
-                Totals as of each day. Kept for 90 days.
-              </p>
-            </section>
-          </div>
-        )}
-      </aside>
-    </div>
+              </>
+            )}
+            <Badge variant="outline" className="font-normal">
+              Totals as of each day · kept for 90 days
+            </Badge>
+          </section>
+        </div>
+      )}
+    </>
   );
 }
 
 function Section({ title, value, children }) {
   return (
-    <section className="border-b border-[#262626] py-5">
-      <div className="flex items-center justify-between text-sm font-semibold">
+    <section className="space-y-3">
+      <div className="flex items-center justify-between text-sm font-medium">
         <span>{title}</span>
         <span>{format(value)}</span>
       </div>
-      <div className="mt-3 space-y-3">{children}</div>
+      <div className="space-y-3">{children}</div>
     </section>
   );
 }
 
 function Row({ label, value }) {
   return (
-    <div className="flex items-center justify-between text-sm text-[#f5f5f5]">
+    <div className="flex items-center justify-between text-sm">
       <span>{label}</span>
       <span>{format(value)}</span>
     </div>
   );
 }
 
-function Bar({ label, percent }) {
+function SplitBar({ label, percent }) {
   return (
-    <div>
-      <div className="flex justify-between text-xs text-[#a8a8a8]">
+    <div className="space-y-1">
+      <div className="flex justify-between text-xs text-muted-foreground">
         <span>{label}</span>
         <span>{percent === null ? "–" : `${percent.toFixed(1)}%`}</span>
       </div>
-      <div className="mt-1 h-1.5 w-full bg-[#262626]">
-        <div
-          className="h-full bg-[#c13584]"
-          style={{ width: `${percent ?? 0}%` }}
-        />
-      </div>
+      <Progress value={percent ?? 0} />
     </div>
   );
 }
@@ -319,37 +288,4 @@ function pct(part, total) {
 
 function format(value) {
   return value === null || value === undefined ? "–" : Number(value).toLocaleString();
-}
-
-function PlayIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-      <path d="M6 4l14 8-14 8z" />
-    </svg>
-  );
-}
-
-function CarouselIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <rect x="7" y="3" width="14" height="14" rx="2" />
-      <path d="M3 7v12a2 2 0 0 0 2 2h12" />
-    </svg>
-  );
-}
-
-function HeartIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-      <path d="M12 21s-7-4.5-9.5-9A5.5 5.5 0 0 1 12 6a5.5 5.5 0 0 1 9.5 6c-2.5 4.5-9.5 9-9.5 9z" />
-    </svg>
-  );
-}
-
-function CommentIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-      <path d="M21 12a8 8 0 0 1-11.6 7.1L4 21l1.9-5.2A8 8 0 1 1 21 12z" />
-    </svg>
-  );
 }
