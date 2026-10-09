@@ -14,6 +14,7 @@ import AccountInsights from "./AccountInsights";
 import { AccountsOverview } from "./AccountsOverview";
 import RecentMonths from "./RecentMonths";
 import { CompetitorChips, LookupGate, LookupProvider, LookupResults } from "./LookupBox";
+import { SyncNow } from "./SyncNow";
 import { BrandStyle } from "./BrandStyle";
 import { getBrandColor, listCompetitors } from "@/lib/settings";
 import { Grid2x2, Play, Tag } from "lucide-react";
@@ -64,11 +65,12 @@ async function DashboardContent({ searchParams }) {
   const { account: accountParam, tab: tabParam } = await searchParams;
   const active = accounts.find((a) => a.id === accountParam) ?? accounts[0];
   const tab = TABS.find((t) => t.key === tabParam)?.key ?? "posts";
-  const [posts, months, brandColor, competitors] = await Promise.all([
+  const [posts, months, brandColor, competitors, [syncRun]] = await Promise.all([
     fetchPosts(active.id, tab),
     fetchMonthlyCounts(active.id),
     getBrandColor(session.userId),
     listCompetitors(session.userId),
+    sql`select last_synced_at from sync_runs where fb_user_id = ${session.userId}`,
   ]);
 
   return (
@@ -87,6 +89,8 @@ async function DashboardContent({ searchParams }) {
             followers={active.followers_count}
             following={active.follows_count}
           />
+
+          <SyncNow lastSyncedAt={syncRun?.last_synced_at ?? null} />
 
           <AccountsOverview activeId={active.id} tab={tab} />
 

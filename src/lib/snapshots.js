@@ -3,8 +3,8 @@ import { decrypt } from "@/lib/crypto";
 import { fetchPages, fetchPostInsights } from "@/lib/meta";
 
 // Stores one row per post per day with its current insights. Rows older than `days` are deleted.
-export async function snapshotPosts(days = 90) {
-  const users = await sql`select id, token_enc from fb_users where status = 'active'`;
+export async function snapshotPosts(days = 90, onlyUserId = null) {
+  const users = await sql`select id, token_enc from fb_users where status = 'active' and (${onlyUserId}::uuid is null or id = ${onlyUserId}::uuid)`;
   let taken = 0;
   let failed = 0;
 

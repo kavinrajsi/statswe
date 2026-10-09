@@ -11,6 +11,7 @@ import BarChart from "./BarChart";
 import AudienceInsights from "./AudienceInsights";
 import TopContent from "./TopContent";
 import ContentInsights from "./ContentInsights";
+import Competitors from "./Competitors";
 import Demographics from "./Demographics";
 import ActiveTimes from "./ActiveTimes";
 import MonthlyMetrics from "./MonthlyMetrics";
@@ -97,6 +98,8 @@ export default function AccountInsights({ accountId, children }) {
       <TopContent accountId={accountId} />
 
       <ContentInsights accountId={accountId} />
+
+      <Competitors accountId={accountId} />
 
       <Demographics accountId={accountId} />
 

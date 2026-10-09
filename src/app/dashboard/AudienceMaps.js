@@ -6,7 +6,9 @@ import world from "world-atlas/countries-110m.json";
 
 const W = 600;
 const H = 380;
-const COUNTRIES = feature(world, world.objects.countries).features;
+// Polar land masses are left off both maps
+const HIDDEN = new Set(["Antarctica", "Fr. S. Antarctic Lands"]);
+const COUNTRIES = feature(world, world.objects.countries).features.filter((f) => !HIDDEN.has(f.properties?.name));
 
 // Countries shaded by share of the audience. rows: [{ key, numeric, value }]
 export function CountryMap({ rows }) {

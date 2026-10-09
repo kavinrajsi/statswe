@@ -4,8 +4,8 @@ import { fetchPages, fetchStories, fetchStoryInsights } from "@/lib/meta";
 
 // Saves every story that is live now, with its latest insights. Stories older than `days` are deleted.
 // Meta serves a story for 24 hours only, so this must run often enough to catch each one.
-export async function captureStories(days = 90) {
-  const users = await sql`select id, token_enc from fb_users where status = 'active'`;
+export async function captureStories(days = 90, onlyUserId = null) {
+  const users = await sql`select id, token_enc from fb_users where status = 'active' and (${onlyUserId}::uuid is null or id = ${onlyUserId}::uuid)`;
   let saved = 0;
   let failed = 0;
 

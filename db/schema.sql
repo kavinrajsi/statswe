@@ -131,3 +131,65 @@ create table if not exists city_geo (
   lon        double precision,
   looked_up_at timestamptz not null default now()
 );
+
+-- Account data stored by the sync (manual "Sync now" button and the nightly job at 01:00 IST).
+-- One row per account and day: reach, views, profile visits and follower change.
+create table if not exists account_daily (
+  ig_user_id    text not null,
+  day           date not null,
+  reach         int,
+  views         int,
+  profile_views int,
+  follower_net  int,
+  primary key (ig_user_id, day)
+);
+
+-- Period summaries per account: period is '30d', 'mtd' or 'prev'; 'engaged' holds accounts engaged for 7/14/30 days.
+create table if not exists account_summary (
+  ig_user_id text not null,
+  period     text not null,
+  data       jsonb not null,
+  synced_at  timestamptz not null default now(),
+  primary key (ig_user_id, period)
+);
+
+-- Demographics per account and audience ('followers' or 'reached'), in the shape the dashboard shows.
+create table if not exists account_audience (
+  ig_user_id text not null,
+  audience   text not null,
+  data       jsonb not null,
+  synced_at  timestamptz not null default now(),
+  primary key (ig_user_id, audience)
+);
+
+-- Most active times per account (weekday x hour, IST).
+create table if not exists account_activity (
+  ig_user_id text primary key,
+  data       jsonb not null,
+  synced_at  timestamptz not null default now()
+);
+
+-- Last sync per login, shown next to the Sync button.
+create table if not exists sync_runs (
+  fb_user_id     uuid primary key references fb_users(id) on delete cascade,
+  last_synced_at timestamptz not null default now(),
+  status         text not null default 'ok',
+  message        text
+);
+
+-- Public stats of each saved competitor, stored by the nightly sync. One row per login, competitor and day.
+create table if not exists competitor_stats (
+  fb_user_id  uuid not null references fb_users(id) on delete cascade,
+  username    text not null,
+  day         date not null,
+  name        text,
+  picture_url text,
+  followers   int,
+  following   int,
+  media_count int,
+  posts_30d   int,
+  avg_likes   numeric,
+  avg_comments numeric,
+  top_post    jsonb,
+  primary key (fb_user_id, username, day)
+);

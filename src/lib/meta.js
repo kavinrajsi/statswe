@@ -252,6 +252,45 @@ export async function fetchStoryInsights(storyId, pageToken) {
   return out;
 }
 
+// Daily values of one metric from sinceSec until now, in windows Meta accepts. Returns Map(date -> value).
+// Windows Meta refuses are skipped, so older days can be missing.
+export async function fetchDailySeries(igUserId, pageToken, metric, sinceSec) {
+  const until = Math.floor(Date.now() / 1000);
+  const results = await Promise.all(
+    windowsOf(sinceSec, until).map(([s, e]) =>
+      getJson(`${GRAPH}/${igUserId}/insights?metric=${metric}&period=day&since=${s}&until=${e}`, pageToken).catch(() => null)
+    )
+  );
+  const out = new Map();
+  for (const json of results) {
+    for (const v of json?.data?.[0]?.values ?? []) {
+      if (v.value === null || v.value === undefined) continue;
+      out.set(v.end_time.slice(0, 10), v.value);
+    }
+  }
+  return out;
+}
+
+// Number of public posts of another account published since sinceSec (unix seconds). Pages through timestamps, up to 10 pages (500 posts).
+export async function fetchRecentPostCount(igUserId, pageToken, username, sinceSec) {
+  let after = null;
+  let count = 0;
+  for (let page = 0; page < 10; page += 1) {
+    const cursor = after ? `.after(${after})` : "";
+    const fields = `business_discovery.username(${username}){media.limit(50)${cursor}{timestamp}}`;
+    const json = await getJson(`${GRAPH}/${igUserId}?fields=${encodeURIComponent(fields)}`, pageToken);
+    const edge = json.business_discovery?.media;
+    const posts = edge?.data ?? [];
+    for (const p of posts) {
+      if (Date.parse(p.timestamp) / 1000 >= sinceSec) count += 1;
+    }
+    const oldest = posts.length ? Date.parse(posts[posts.length - 1].timestamp) / 1000 : null;
+    if (oldest === null || oldest < sinceSec || !edge?.paging?.cursors?.after) break;
+    after = edge.paging.cursors.after;
+  }
+  return count;
+}
+
 const MAX_WINDOW_SEC = 30 * 86400;
 
 // Splits [since, until) into windows Meta accepts (at most 30 days each).

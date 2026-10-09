@@ -1,27 +1,41 @@
 "use client";
 
-import { Moon, Sun } from "lucide-react";
+import { Check, Monitor, Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
-import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { cn } from "@/lib/utils";
 
-// Light / dark / system switcher for the app bar.
+const OPTIONS = [
+  { value: "light", label: "Light", icon: Sun },
+  { value: "dark", label: "Dark", icon: Moon },
+  { value: "system", label: "Match system", icon: Monitor },
+];
+
+// Light / dark / system theme as a list. The current choice is marked.
 export function ModeToggle() {
-  const { setTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" aria-label="Toggle theme">
-          <Sun className="h-4 w-4 scale-100 rotate-0 transition-all dark:scale-0 dark:-rotate-90" />
-          <Moon className="absolute h-4 w-4 scale-0 rotate-90 transition-all dark:scale-100 dark:rotate-0" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => setTheme("light")}>Light</DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setTheme("dark")}>Dark</DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setTheme("system")}>System</DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <ul className="divide-y rounded-lg border">
+      {OPTIONS.map(({ value, label, icon: Icon }) => {
+        const active = theme === value;
+        return (
+          <li key={value}>
+            <button
+              type="button"
+              onClick={() => setTheme(value)}
+              aria-pressed={active}
+              className={cn(
+                "flex w-full items-center gap-3 px-4 py-3 text-left text-sm hover:bg-muted",
+                active && "font-medium"
+              )}
+            >
+              <Icon className="h-4 w-4 text-muted-foreground" />
+              <span className="flex-1">{label}</span>
+              {active && <Check className="h-4 w-4" />}
+            </button>
+          </li>
+        );
+      })}
+    </ul>
   );
 }
