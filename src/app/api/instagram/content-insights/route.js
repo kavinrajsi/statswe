@@ -27,13 +27,13 @@ export async function GET(request) {
   if (!row) return NextResponse.json({ error: "not_found" }, { status: 404 });
 
   try {
-    const { items, earliestSnapshot } = await loadContent({ accountId, userId: session.userId, type, days, metric, sort });
+    const { items, totals, earliestSnapshot } = await loadContent({ accountId, userId: session.userId, type, days, metric, sort });
 
     const engagedDays = Math.min(days, 30);
     const [engaged] = await sql`select data from account_summary where ig_user_id = ${row.ig_user_id} and period = 'engaged'`;
     const accountsEngaged = engaged?.data?.[String(engagedDays)] ?? null;
 
-    return NextResponse.json({ items, type, days, metric, sort, accountsEngaged, engagedDays, earliestSnapshot });
+    return NextResponse.json({ items, totals, type, days, metric, sort, accountsEngaged, engagedDays, earliestSnapshot });
   } catch (err) {
     console.error("Content insights failed:", err);
     return NextResponse.json({ error: "content_failed" }, { status: 502 });

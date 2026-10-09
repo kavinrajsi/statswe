@@ -11,7 +11,7 @@ const MAX_ITEMS = 50;
 // A post published inside the range counts its full latest total. A post older than the range needs a snapshot from before the
 // range start; without one its value is null. Posts and reels are listed by publish date.
 //
-// Returns { items, earliestSnapshot } where earliestSnapshot is the first day with stored snapshots ("YYYY-MM-DD" or null).
+// Returns { items, totals, earliestSnapshot } where earliestSnapshot is the first day with stored snapshots ("YYYY-MM-DD" or null).
 export async function loadContent({ accountId, userId, type, days, metric, sort }) {
   const now = Date.now();
   const since = new Date(now - days * 86400000).toISOString();
@@ -21,7 +21,7 @@ export async function loadContent({ accountId, userId, type, days, metric, sort 
     type === "stories"
       ? []
       : sql`
-          select p.ig_id, p.media_product_type, p.media_type, p.thumbnail_url, p.media_url, p.permalink, p.ts,
+          select p.ig_id, p.media_product_type, p.media_type, p.thumbnail_url, p.media_url, p.permalink, p.ts, p.caption,
                  latest.metrics as m_latest, base.metrics as m_base
           from ig_posts p
           join ig_accounts a on a.id = p.account_id
@@ -73,14 +73,26 @@ export async function loadContent({ accountId, userId, type, days, metric, sort 
       thumbnail_url: p.thumbnail_url,
       media_url: p.media_url,
       permalink: p.permalink,
+      caption: p.caption,
       views: value("views"),
       viewers: value("reach"),
       interactions: value("total_interactions"),
       shares: value("shares"),
+      likes: value("likes"),
+      comments: value("comments"),
+      saves: value("saved"),
     };
   });
 
-  const storyItems = stories.map((s) => ({ ...s, kind: "story" }));
+  // Stories only store the four totals, so likes, comments and saves stay null for them
+  const storyItems = stories.map((s) => ({
+    ...s,
+    kind: "story",
+    caption: null,
+    likes: null,
+    comments: null,
+    saves: null,
+  }));
   const items = [...postItems, ...storyItems];
 
   const key = METRICS.includes(metric) && metric !== "accounts" ? metric : "views";
@@ -96,7 +108,25 @@ export async function loadContent({ accountId, userId, type, days, metric, sort 
   else if (sort === "lowest") items.sort((a, b) => byMetric(a, b, -1));
   else items.sort((a, b) => new Date(b.ts) - new Date(a.ts));
 
-  return { items: items.slice(0, MAX_ITEMS), earliestSnapshot: first?.first_day ?? null };
+  const shown = items.slice(0, MAX_ITEMS);
+  return { items: shown, totals: totalsOf(shown), earliestSnapshot: first?.first_day ?? null };
+}
+
+// Sums of the listed items per metric (nulls skipped; null when no item has a value).
+// Viewers and accounts are not additive across posts, so the UI labels viewers as a sum.
+// Average engagement rate = total interactions / total views, over items that have both.
+function totalsOf(items) {
+  const keys = ["views", "viewers", "interactions", "shares", "likes", "comments", "saves"];
+  const totals = { count: items.length };
+  for (const key of keys) {
+    const values = items.map((i) => i[key]).filter((v) => v !== null && v !== undefined);
+    totals[key] = values.length ? values.reduce((s, v) => s + v, 0) : null;
+  }
+  const both = items.filter((i) => i.views && i.interactions !== null && i.interactions !== undefined);
+  const viewsWithInteractions = both.reduce((s, i) => s + i.views, 0);
+  const interactionsWithViews = both.reduce((s, i) => s + i.interactions, 0);
+  totals.engagementRate = viewsWithInteractions ? (interactionsWithViews / viewsWithInteractions) * 100 : null;
+  return totals;
 }
 
 // One metric for a range: latest total minus the total at the range start.
