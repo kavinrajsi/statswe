@@ -1,7 +1,7 @@
 import { monthLabel, recentMonthKeys } from "./months";
 
 // Posts per month for the current calendar month and the five before it, oldest first.
-// Months with no posts show 0. Server-rendered from the same rows as MonthlyPosts.
+// Months with no posts show 0. Built from the monthly post counts passed in.
 // showReels=false hides the reels line (search results can't tell reels apart).
 // coveredFrom: from fetchBusinessDiscoveryMonthly. Shows a note only if it reaches into this window.
 export default function RecentMonths({ months, showReels = true, coveredFrom = null }) {

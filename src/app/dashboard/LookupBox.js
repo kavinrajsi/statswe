@@ -3,8 +3,6 @@
 import { createContext, useContext, useState } from "react";
 import Image from "next/image";
 import RecentMonths from "./RecentMonths";
-import MonthlyPosts from "./MonthlyPosts";
-import FollowersGrowth from "./FollowersGrowth";
 import FollowersByMonth from "./FollowersByMonth";
 import { monthEnds } from "./months";
 
@@ -190,29 +188,19 @@ export function LookupResults() {
             ))}
           </ul>
 
-          <FollowersGrowth
-            points={result.followerHistory}
-            periodLabel="Tracked since first search"
+          <FollowersByMonth
+            months={monthEnds(result.followerHistory, 12)}
+            label="Followers · tracked since first search"
+            showSummary
             note="Tracking started today. Growth appears after the next daily snapshot."
           />
-          <FollowersByMonth months={monthEnds(result.followerHistory, 12)} />
 
           {result.monthly && (
-            <>
-              <RecentMonths
-                months={result.monthly.months}
-                showReels={false}
-                coveredFrom={result.monthly.coveredFrom}
-              />
-              <MonthlyPosts
-                months={result.monthly.months}
-                label="Posts · last 12 months"
-                showReels={false}
-                windowMonths={12}
-                coveredFrom={result.monthly.coveredFrom}
-                emptyText="No posts found."
-              />
-            </>
+            <RecentMonths
+              months={result.monthly.months}
+              showReels={false}
+              coveredFrom={result.monthly.coveredFrom}
+            />
           )}
 
           <div className="flex justify-center border-t border-[#dbdbdb]">

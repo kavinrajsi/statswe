@@ -31,9 +31,9 @@ export async function GET(request) {
     const page = pages.find((p) => p.id === row.page_id);
     if (!page?.access_token) return NextResponse.json({ error: "no_page_token" }, { status: 502 });
 
-    // First day of the month eleven months back (UTC): 12 calendar months. RecentMonths uses the last 6 of them.
+    // First day of the month five months back (UTC), so the window matches RecentMonths
     const now = new Date();
-    const sinceDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 11, 1));
+    const sinceDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 5, 1));
 
     const [profile, monthly] = await Promise.all([
       fetchBusinessDiscovery(row.ig_user_id, page.access_token, username),

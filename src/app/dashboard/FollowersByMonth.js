@@ -3,7 +3,9 @@ import { monthLabel } from "./months";
 
 // Follower total at the end of each calendar month, with change from the previous month that has data.
 // months: [{ month: "YYYY-MM", followers }], oldest first. followers is null where there is no data.
-export default function FollowersByMonth({ months, label = "Followers by month" }) {
+// showSummary: adds Followers now / Net change / Growth over the months shown (search results).
+// note: shown under the summary when there is only one data point.
+export default function FollowersByMonth({ months, label = "Followers by month", showSummary = false, note }) {
   const known = months.filter((m) => m.followers !== null);
   if (known.length === 0) return null;
 
@@ -15,9 +17,28 @@ export default function FollowersByMonth({ months, label = "Followers by month" 
     if (m.followers !== null) prev = m.followers;
   }
 
+  const first = known[0].followers;
+  const now = known[known.length - 1].followers;
+  const net = known.length >= 2 ? now - first : null;
+  const growth = net !== null && first > 0 ? (net / first) * 100 : null;
+
   return (
     <section className="mx-4 mb-6 rounded-lg border border-[#dbdbdb] p-4 sm:mx-0">
       <p className="mb-4 text-xs font-semibold text-[#8e8e8e]">{label}</p>
+
+      {showSummary && (
+        <>
+          <div className="mb-4 flex flex-wrap gap-x-8 gap-y-2 text-sm">
+            <Stat label="Followers now" value={now.toLocaleString()} />
+            <Stat label="Net change" value={net === null ? "–" : signed(net)} />
+            <Stat
+              label="Growth"
+              value={growth === null ? "–" : `${growth > 0 ? "+" : ""}${growth.toFixed(2)}%`}
+            />
+          </div>
+          {known.length < 2 && note && <p className="mb-4 text-sm text-[#8e8e8e]">{note}</p>}
+        </>
+      )}
 
       {known.length >= 2 && (
         <LineChart
@@ -55,6 +76,15 @@ export default function FollowersByMonth({ months, label = "Followers by month" 
         </div>
       </details>
     </section>
+  );
+}
+
+function Stat({ label, value }) {
+  return (
+    <div>
+      <p className="text-xs text-[#8e8e8e]">{label}</p>
+      <p className="text-lg font-semibold text-[#262626]">{value}</p>
+    </div>
   );
 }
 

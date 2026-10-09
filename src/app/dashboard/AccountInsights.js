@@ -42,7 +42,6 @@ export default function AccountInsights({ accountId }) {
   const days = data.days ?? [];
   const maxReach = Math.max(1, ...days.map((d) => d.reach ?? 0));
   const reachTotal = days.reduce((sum, d) => sum + (d.reach ?? 0), 0);
-  const followersNet = days.reduce((sum, d) => sum + (d.follower_count ?? 0), 0);
 
   return (
     <>
@@ -50,7 +49,6 @@ export default function AccountInsights({ accountId }) {
       <div className="mb-4 flex flex-wrap gap-x-8 gap-y-2 text-sm">
         <Stat label="Last 30 days · Reach" value={reachTotal} />
         <Stat label="Views" value={data.views} />
-        <Stat label="Followers (net)" value={followersNet} signed />
       </div>
 
       {days.length === 0 ? (
