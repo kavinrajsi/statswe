@@ -30,7 +30,7 @@ export default function RecentMonths({ months, showReels = true, coveredFrom = n
         <CardDescription>{total.toLocaleString()} posts in total</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <ul className="grid grid-cols-3 gap-3 sm:grid-cols-6">
+        <ul className="grid grid-cols-3 gap-3">
           {recent.map((m) => (
             <li key={m.month} className="rounded-lg border bg-muted/40 p-3 text-center">
               <p className="flex items-center justify-center gap-1 text-xs text-muted-foreground">

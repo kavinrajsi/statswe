@@ -160,9 +160,10 @@ export async function fetchPostInsights(mediaId, pageToken) {
 
 // Account-level daily series for the last `days` days (max 30 per Meta call).
 // reach and follower_count are per-day values; views is a total over the window.
-export async function fetchAccountInsights(igUserId, pageToken, days = 30) {
+// Daily reach and follower change from sinceSec (unix seconds) until now. Meta serves at most 30 days per call.
+export async function fetchAccountInsights(igUserId, pageToken, sinceSec) {
   const until = Math.floor(Date.now() / 1000);
-  const since = until - days * 86400;
+  const since = Math.max(sinceSec, until - 30 * 86400);
   const window = `since=${since}&until=${until}`;
   const byDate = {};
   let error = null;
@@ -182,19 +183,78 @@ export async function fetchAccountInsights(igUserId, pageToken, days = 30) {
     })
   );
 
-  let views = null;
-  try {
-    const json = await getJson(
-      `${GRAPH}/${igUserId}/insights?metric=views&metric_type=total_value&period=day&${window}`,
-      pageToken
-    );
-    views = json.data?.[0]?.total_value?.value ?? null;
-  } catch (err) {
-    error ??= err.message;
-  }
-
   const series = Object.values(byDate).sort((a, b) => a.date.localeCompare(b.date));
-  return { days: series, views, error };
+  return { days: series, error };
+}
+
+const MAX_WINDOW_SEC = 30 * 86400;
+
+// Splits [since, until) into windows Meta accepts (at most 30 days each).
+function windowsOf(since, until) {
+  const out = [];
+  for (let s = since; s < until; s += MAX_WINDOW_SEC) out.push([s, Math.min(s + MAX_WINDOW_SEC, until)]);
+  return out;
+}
+
+// One insights call per window. A window Meta refuses comes back as null.
+async function insightWindows(igUserId, pageToken, query, since, until) {
+  return Promise.all(
+    windowsOf(since, until).map(([s, e]) =>
+      getJson(
+        `${GRAPH}/${igUserId}/insights?${query}&metric_type=total_value&period=day&since=${s}&until=${e}`,
+        pageToken
+      ).catch(() => null)
+    )
+  );
+}
+
+// One metric's total over [since, until] (unix seconds). Null if Meta returns nothing.
+// Additive metrics are summed across windows. Reach is unique, so only the first window is used for longer ranges.
+export async function fetchMetricTotal(igUserId, pageToken, metric, since, until) {
+  const results = await insightWindows(igUserId, pageToken, `metric=${metric}`, since, until);
+  const usable = metric === "reach" ? results.slice(0, 1) : results;
+  const values = usable.map((json) => json?.data?.[0]?.total_value?.value ?? null);
+  if (values.every((v) => v === null)) return null;
+  return values.reduce((sum, v) => sum + (v ?? 0), 0);
+}
+
+// A metric split by breakdown (e.g. "follow_type,media_product_type"). rows: [{ key: "FOLLOWER/REEL", value }].
+// Additive metrics are summed across windows; unique metrics (reach) use the first window only.
+export async function fetchInsightBreakdown(igUserId, pageToken, { metric, breakdown, since, until }) {
+  const results = await insightWindows(
+    igUserId,
+    pageToken,
+    `metric=${metric}&breakdown=${breakdown}`,
+    since,
+    until
+  );
+  const usable = metric === "reach" ? results.slice(0, 1) : results;
+  if (usable.every((json) => json === null)) return null;
+
+  let total = 0;
+  const sums = new Map();
+  for (const json of usable) {
+    const tv = json?.data?.[0]?.total_value;
+    if (!tv) continue;
+    total += tv.value ?? 0;
+    for (const r of tv.breakdowns?.[0]?.results ?? []) {
+      const key = r.dimension_values.join("/");
+      sums.set(key, (sums.get(key) ?? 0) + (r.value ?? 0));
+    }
+  }
+  return { total, rows: [...sums].map(([key, value]) => ({ key, value })) };
+}
+
+// Unique reach, views and profile visits from sinceSec (unix seconds) until now. Each metric fails on its own (null).
+// reach is Meta's unique reach for the whole window, so it is not the sum of the daily values.
+export async function fetchAccountSummary(igUserId, pageToken, sinceSec) {
+  const until = Math.floor(Date.now() / 1000);
+  const [reach, views, profileViews] = await Promise.all([
+    fetchMetricTotal(igUserId, pageToken, "reach", sinceSec, until),
+    fetchMetricTotal(igUserId, pageToken, "views", sinceSec, until),
+    fetchMetricTotal(igUserId, pageToken, "profile_views", sinceSec, until),
+  ]);
+  return { reach, views, profileViews };
 }
 
 // Daily follower totals for the last `windows` * 30 days, rebuilt from the current count and Meta's daily

@@ -11,6 +11,7 @@ import { AppBar } from "./AppBar";
 import { ProfileCard } from "./ProfileCard";
 import PostGrid from "./PostGrid";
 import AccountInsights from "./AccountInsights";
+import { AccountsOverview } from "./AccountsOverview";
 import RecentMonths from "./RecentMonths";
 import { LookupGate, LookupProvider, LookupResults } from "./LookupBox";
 import { Grid2x2, Play, Tag } from "lucide-react";
@@ -80,6 +81,8 @@ async function DashboardContent({ searchParams }) {
             followers={active.followers_count}
             following={active.follows_count}
           />
+
+          <AccountsOverview activeId={active.id} tab={tab} />
 
           <AccountInsights key={active.id} accountId={active.id}>
             <RecentMonths months={months} />

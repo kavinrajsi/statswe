@@ -3,7 +3,7 @@ import LineChart from "./LineChart";
 
 // Follower count over time plus net change for the period.
 // points: [{ date: "YYYY-MM-DD", followers }], oldest first. Renders nothing when there are no points.
-export default function FollowersGrowth({ points, periodLabel, note }) {
+export default function FollowersGrowth({ points, periodLabel, note, action }) {
   if (points.length === 0) return null;
 
   const hasGrowth = points.length >= 2;
@@ -14,9 +14,12 @@ export default function FollowersGrowth({ points, periodLabel, note }) {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="text-base">Followers growth</CardTitle>
-        <CardDescription>{periodLabel}</CardDescription>
+      <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3">
+        <div>
+          <CardTitle className="text-base">Followers growth</CardTitle>
+          <CardDescription>{periodLabel}</CardDescription>
+        </div>
+        {action}
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex flex-wrap gap-x-8 gap-y-2">

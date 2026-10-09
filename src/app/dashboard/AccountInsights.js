@@ -8,7 +8,9 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import BarChart from "./BarChart";
-import FollowersByMonth from "./FollowersByMonth";
+import AudienceInsights from "./AudienceInsights";
+import MonthlyMetrics from "./MonthlyMetrics";
+import { PeriodToggle } from "./PeriodToggle";
 import FollowersGrowth from "./FollowersGrowth";
 
 // Last 30 days of account-level insights, fetched live from Meta.
@@ -16,10 +18,11 @@ import FollowersGrowth from "./FollowersGrowth";
 export default function AccountInsights({ accountId, children }) {
   const [data, setData] = useState(null);
   const [failed, setFailed] = useState(false);
+  const [chartPeriod, setChartPeriod] = useState("30d");
 
   useEffect(() => {
     let cancelled = false;
-    fetch(`/api/instagram/account-insights?account=${encodeURIComponent(accountId)}`)
+    fetch(`/api/instagram/account-insights?account=${encodeURIComponent(accountId)}&period=${chartPeriod}`)
       .then(async (res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.json();
@@ -29,7 +32,7 @@ export default function AccountInsights({ accountId, children }) {
     return () => {
       cancelled = true;
     };
-  }, [accountId]);
+  }, [accountId, chartPeriod]);
 
   if (failed) {
     return (
@@ -58,30 +61,49 @@ export default function AccountInsights({ accountId, children }) {
   }
 
   const days = data.days ?? [];
-  const reachTotal = days.reduce((sum, d) => sum + (d.reach ?? 0), 0);
+  const toggle = <PeriodToggle value={chartPeriod} onChange={setChartPeriod} />;
+  const chartLabel =
+    data.chartPeriod === "mtd" && data.chartStart
+      ? `${dayLabel(data.chartStart)} – ${dayLabel(data.chartEnd)}`
+      : "Last 30 days";
+  // Unique reach from Meta; fall back to summing daily values if it's unavailable
+  const reachTotal = data.reachTotal ?? days.reduce((sum, d) => sum + (d.reach ?? 0), 0);
+  const period =
+    data.periodStart && data.periodEnd
+      ? `${dayLabel(data.periodStart)} – ${dayLabel(data.periodEnd)}`
+      : "Month to date";
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 gap-4">
-        <StatCard title="Reach · last 30 days" value={reachTotal} />
-        <StatCard title="Views · last 30 days" value={data.views} />
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+        <StatCard title="Reach" period={period} value={reachTotal} />
+        <StatCard title="Views" period={period} value={data.views} />
+        <StatCard title="Profile visits" period={period} value={data.profileViews} />
       </div>
 
+      <ReachCard days={days} error={data.error} label={chartLabel} action={toggle} />
+      <FollowersGrowth
+        points={followerSeries(days, data.followers)}
+        periodLabel={chartLabel}
+        action={toggle}
+      />
+
+      <AudienceInsights accountId={accountId} />
+
       <div className="grid gap-6 lg:grid-cols-2">
-        <ReachCard days={days} error={data.error} />
-        <FollowersGrowth points={followerSeries(days, data.followers)} periodLabel="Last 30 days" />
-        {data.followerMonths && <FollowersByMonth months={data.followerMonths} />}
+        {data.monthly && <MonthlyMetrics rows={data.monthly} />}
         {children}
       </div>
     </div>
   );
 }
 
-function StatCard({ title, value }) {
+function StatCard({ title, period, value }) {
   return (
     <Card>
       <CardHeader className="pb-2">
         <CardDescription>{title}</CardDescription>
+        <p className="text-xs text-muted-foreground">{period}</p>
       </CardHeader>
       <CardContent>
         <p className="text-2xl font-semibold">{format(value)}</p>
@@ -90,12 +112,15 @@ function StatCard({ title, value }) {
   );
 }
 
-function ReachCard({ days, error }) {
+function ReachCard({ days, error, label, action }) {
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="text-base">Reach</CardTitle>
-        <CardDescription>Daily reach, last 30 days</CardDescription>
+      <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3">
+        <div>
+          <CardTitle className="text-base">Reach</CardTitle>
+          <CardDescription>Daily reach, {label}</CardDescription>
+        </div>
+        {action}
       </CardHeader>
       <CardContent className="space-y-4">
         {days.length === 0 ? (
@@ -157,6 +182,11 @@ function followerSeries(days, current) {
 
 function format(value) {
   return value === null || value === undefined ? "–" : Number(value).toLocaleString();
+}
+
+// "2026-10-01" -> "01 Oct"
+function dayLabel(iso) {
+  return new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-GB", { day: "2-digit", month: "short", timeZone: "UTC" });
 }
 
 function signedFormat(value) {

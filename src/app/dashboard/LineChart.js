@@ -9,7 +9,8 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/
 export default function LineChart({ data, yLabel, xLabel, color = "var(--chart-1)", height = 200 }) {
   const config = { value: { label: yLabel, color } };
   const shortByLabel = new Map(data.map((d) => [d.label, d.short ?? d.label]));
-  const labelEvery = Math.max(1, Math.ceil(data.length / 8));
+  // Long date lists get angled labels so every date fits
+  const angled = data.length > 12;
 
   const values = data.map((d) => d.value);
   const lo = Math.min(...values);
@@ -18,13 +19,16 @@ export default function LineChart({ data, yLabel, xLabel, color = "var(--chart-1
 
   return (
     <ChartContainer config={config} className="w-full" style={{ height }}>
-      <RechartsLineChart data={data} margin={{ top: 12, right: 12, left: 4, bottom: 24 }}>
+      <RechartsLineChart data={data} margin={{ top: 12, right: 12, left: 4, bottom: angled ? 44 : 24 }}>
         <CartesianGrid vertical={false} />
         <XAxis
           dataKey="label"
           tickLine={false}
           axisLine={false}
-          interval={labelEvery - 1}
+          interval={0}
+          angle={angled ? -45 : 0}
+          textAnchor={angled ? "end" : "middle"}
+          height={angled ? 56 : 30}
           tickFormatter={(v) => shortByLabel.get(v) ?? v}
           label={{ value: xLabel, position: "insideBottom", offset: -12, fontSize: 11 }}
         />

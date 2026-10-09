@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 import { decrypt } from "@/lib/crypto";
-import { monthEnds } from "@/app/dashboard/months";
-import { fetchAccountInsights, fetchFollowerPoints, fetchIgProfile, fetchPages } from "@/lib/meta";
+import { getAccountMonthly } from "@/lib/account-monthly";
+import { monthToDate } from "@/app/dashboard/months";
+import { fetchAccountInsights, fetchAccountSummary, fetchIgProfile, fetchPages } from "@/lib/meta";
 import { readSession, SESSION_COOKIE } from "@/lib/session";
 
 // Daily account insights for one IG account the logged-in user owns. Not stored.
@@ -27,20 +28,35 @@ export async function GET(request) {
     if (!page?.access_token) {
       return NextResponse.json({ error: "no_page_token" }, { status: 502 });
     }
+    const mtd = monthToDate();
+    // Daily charts cover the last 30 days, or month to date when asked for it
+    const period = new URL(request.url).searchParams.get("period") === "mtd" ? "mtd" : "30d";
+    const insightsSince = period === "mtd" ? mtd.sinceSec : Math.floor(Date.now() / 1000) - 30 * 86400;
     // Current follower total anchors the growth chart; if it fails the chart is just hidden
-    const [insights, profile] = await Promise.all([
-      fetchAccountInsights(row.ig_user_id, page.access_token),
+    const [insights, profile, summary] = await Promise.all([
+      fetchAccountInsights(row.ig_user_id, page.access_token, insightsSince),
       fetchIgProfile(row.ig_user_id, page.access_token).catch(() => null),
+      fetchAccountSummary(row.ig_user_id, page.access_token, mtd.sinceSec),
     ]);
     const followers = profile?.followers_count ?? null;
-    // Month-end totals for the last 12 months. Null if Meta has no follower history for this account.
-    const followerMonths =
+    // Last 12 months of followers, reach and profile visits. Null if the follower count is unavailable.
+    const monthly =
       followers === null
         ? null
-        : await fetchFollowerPoints(row.ig_user_id, page.access_token, followers)
-            .then((points) => monthEnds(points, 12))
-            .catch(() => null);
-    return NextResponse.json({ ...insights, followers, followerMonths });
+        : await getAccountMonthly(row.ig_user_id, page.access_token, followers).catch(() => null);
+    return NextResponse.json({
+      ...insights,
+      followers,
+      monthly,
+      reachTotal: summary.reach,
+      views: summary.views,
+      profileViews: summary.profileViews,
+      periodStart: mtd.start,
+      periodEnd: mtd.end,
+      chartPeriod: period,
+      chartStart: new Date(insightsSince * 1000).toISOString().slice(0, 10),
+      chartEnd: mtd.end,
+    });
   } catch (err) {
     console.error("Account insights failed:", err);
     return NextResponse.json({ error: "insights_failed" }, { status: 502 });

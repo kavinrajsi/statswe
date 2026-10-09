@@ -80,3 +80,15 @@ create table if not exists ig_lookup_followers (
   source        text not null default 'search',
   primary key (fb_user_id, username, snapshot_date)
 );
+
+-- Monthly account metrics (dashboard "Month by month"). One row per account and calendar month (first day, UTC).
+-- Completed months are stored once; the current month is refreshed on every load. Empty values mean Meta had no data.
+create table if not exists ig_account_monthly (
+  ig_user_id    text not null,
+  month         date not null,
+  followers     int,
+  reach         int,
+  profile_views int,
+  fetched_at    timestamptz not null default now(),
+  primary key (ig_user_id, month)
+);
