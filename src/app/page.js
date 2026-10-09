@@ -17,7 +17,7 @@ async function HomeContent({ searchParams }) {
   const { error } = await searchParams;
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-muted/40 px-4">
+    <main className="relative flex min-h-screen items-center justify-center bg-muted/40 px-4">
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl">statswe</CardTitle>
@@ -37,6 +37,11 @@ async function HomeContent({ searchParams }) {
           )}
         </CardContent>
       </Card>
+      <nav className="absolute inset-x-0 bottom-4 flex justify-center gap-4 text-xs text-muted-foreground">
+        <Link href="/privacy" className="hover:text-foreground">Privacy policy</Link>
+        <Link href="/terms" className="hover:text-foreground">Terms</Link>
+        <Link href="/data-deletion" className="hover:text-foreground">Data deletion</Link>
+      </nav>
     </main>
   );
 }
