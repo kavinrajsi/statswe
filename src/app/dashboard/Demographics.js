@@ -91,18 +91,15 @@ function Section({ title, rows }) {
   );
 }
 
-// Age buckets in age order, unknown last.
+// Every age bucket in age order, so both cards list the same groups. Empty groups show 0%.
 function ageRows(rows) {
   if (!rows) return null;
   const total = rows.reduce((s, r) => s + r.value, 0);
-  return [...rows]
-    .sort((a, b) => {
-      const ia = AGE_ORDER.indexOf(a.key);
-      const ib = AGE_ORDER.indexOf(b.key);
-      return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
-    })
-    .map((r) => ({ label: r.key, pct: total > 0 ? (r.value / total) * 100 : 0 }))
-    .filter((r) => r.pct > 0);
+  const valueOf = new Map(rows.map((r) => [r.key, r.value]));
+  return AGE_ORDER.map((label) => {
+    const value = valueOf.get(label) ?? 0;
+    return { label, pct: total > 0 ? (value / total) * 100 : 0 };
+  });
 }
 
 // Largest groups first, with a share of the total. Only the top few are shown.
@@ -115,10 +112,19 @@ function topRows(rows, label) {
     .map((r) => ({ label: label(r.key), pct: total > 0 ? (r.value / total) * 100 : 0 }));
 }
 
+// "IN" -> "🇮🇳 India"
 function countryName(code) {
+  let name = code;
   try {
-    return new Intl.DisplayNames(["en"], { type: "region" }).of(code) ?? code;
+    name = new Intl.DisplayNames(["en"], { type: "region" }).of(code) ?? code;
   } catch {
-    return code;
+    name = code;
   }
+  return `${flagOf(code)} ${name}`;
+}
+
+// Two-letter region code to its flag emoji (regional indicator letters). Unknown codes give no flag.
+function flagOf(code) {
+  if (!/^[A-Z]{2}$/.test(code)) return "";
+  return String.fromCodePoint(...[...code].map((c) => 127397 + c.charCodeAt(0)));
 }
