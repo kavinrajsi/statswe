@@ -2,6 +2,8 @@
 // The IG account must be a Business/Creator account linked to a Facebook Page.
 // Tokens are sent as Bearer headers so they don't end up in logs.
 
+import { monthKey } from "@/app/dashboard/months";
+
 const GRAPH = "https://graph.facebook.com/v23.0";
 
 export const SCOPES = [
@@ -202,4 +204,52 @@ export async function fetchBusinessDiscovery(igUserId, pageToken, username) {
   const fields = `business_discovery.username(${username}){username,name,biography,profile_picture_url,followers_count,follows_count,media_count,${media}}`;
   const json = await getJson(`${GRAPH}/${igUserId}?fields=${encodeURIComponent(fields)}`, pageToken);
   return json.business_discovery;
+}
+
+const MONTHLY_PAGE_CAP = 10;
+
+// Post counts per UTC month for another account, from pages of 50 posts (newest first).
+// Stops once a page reaches posts older than sinceDate. If MONTHLY_PAGE_CAP runs out first,
+// coveredFrom is the month of the oldest post fetched: that month and earlier are incomplete. Otherwise null.
+export async function fetchBusinessDiscoveryMonthly(igUserId, pageToken, username, sinceDate) {
+  const counts = new Map();
+  let after = null;
+  let oldestFetched = null;
+
+  for (let page = 0; page < MONTHLY_PAGE_CAP; page += 1) {
+    const cursor = after ? `.after(${after})` : "";
+    const media = `media.limit(50)${cursor}{timestamp}`;
+    const fields = `business_discovery.username(${username}){${media}}`;
+    const json = await getJson(`${GRAPH}/${igUserId}?fields=${encodeURIComponent(fields)}`, pageToken);
+    const edge = json.business_discovery?.media;
+    const posts = edge?.data ?? [];
+
+    for (const post of posts) {
+      const date = new Date(post.timestamp);
+      if (date >= sinceDate) {
+        const key = monthKey(date);
+        counts.set(key, (counts.get(key) ?? 0) + 1);
+      }
+    }
+
+    const oldest = posts.length ? new Date(posts[posts.length - 1].timestamp) : null;
+    if (oldest) oldestFetched = oldest;
+    // Graph returns cursors.after without a `next` URL for this nested edge
+    const done = !oldest || oldest < sinceDate || !edge?.paging?.cursors?.after;
+    if (done) return { months: toMonthList(counts), coveredFrom: null };
+    after = edge.paging.cursors.after;
+  }
+
+  return { months: toMonthList(counts), coveredFrom: oldestFetched ? monthKey(oldestFetched) : null };
+}
+
+function toMonthList(counts) {
+  return [...counts].map(([month, total]) => ({ month, total }));
+}
+
+// Current follower count of another account, for the daily lookup snapshots. Null if Meta doesn't return one.
+export async function fetchBusinessDiscoveryFollowers(igUserId, pageToken, username) {
+  const fields = `business_discovery.username(${username}){followers_count}`;
+  const json = await getJson(`${GRAPH}/${igUserId}?fields=${encodeURIComponent(fields)}`, pageToken);
+  return json.business_discovery?.followers_count ?? null;
 }

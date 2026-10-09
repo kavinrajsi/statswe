@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import BarChart from "./BarChart";
+import FollowersGrowth from "./FollowersGrowth";
 
 // Last 30 days of account-level insights, fetched live from Meta.
 export default function AccountInsights({ accountId }) {
@@ -43,6 +44,7 @@ export default function AccountInsights({ accountId }) {
   const followersNet = days.reduce((sum, d) => sum + (d.follower_count ?? 0), 0);
 
   return (
+    <>
     <section className="mx-4 mb-6 rounded-lg border border-[#dbdbdb] p-4 sm:mx-0">
       <div className="mb-4 flex flex-wrap gap-x-8 gap-y-2 text-sm">
         <Stat label="Last 30 days · Reach" value={reachTotal} />
@@ -93,7 +95,21 @@ export default function AccountInsights({ accountId }) {
         <p className="mt-3 text-xs text-[#ed4956]">Meta returned: {data.error}</p>
       )}
     </section>
+    <FollowersGrowth points={followerSeries(days, data.followers)} periodLabel="Last 30 days" />
+    </>
   );
+}
+
+// Follower total per day. Starts from today's count and walks back by Meta's daily net change.
+function followerSeries(days, current) {
+  if (current === null || current === undefined || days.length === 0) return [];
+  const series = [];
+  let total = current;
+  for (let i = days.length - 1; i >= 0; i -= 1) {
+    series.unshift({ date: days[i].date, followers: total });
+    total -= days[i].follower_count ?? 0;
+  }
+  return series;
 }
 
 function Stat({ label, value, signed }) {

@@ -2,7 +2,9 @@
 
 import { createContext, useContext, useState } from "react";
 import Image from "next/image";
-import BarChart from "./BarChart";
+import RecentMonths from "./RecentMonths";
+import MonthlyPosts from "./MonthlyPosts";
+import FollowersGrowth from "./FollowersGrowth";
 
 const LookupContext = createContext(null);
 
@@ -28,7 +30,14 @@ export function LookupProvider({ children }) {
             : `Lookup failed (${json.error ?? res.status}).`
         );
       } else {
-        setResult(json.profile);
+        // No history yet on the first search: show today's count alone, so the card shows the "tracking started" note
+        const history = json.followerHistory ?? [];
+        const followers = json.profile?.followers_count;
+        const followerHistory =
+          history.length === 0 && followers != null
+            ? [{ date: new Date().toISOString().slice(0, 10), followers }]
+            : history;
+        setResult({ ...json.profile, monthly: json.monthly, followerHistory });
       }
     } catch {
       setStatus("Lookup failed. Check your connection and try again.");
@@ -179,10 +188,28 @@ export function LookupResults() {
             ))}
           </ul>
 
-          {media.length > 0 && (
-            <div className="px-4 sm:px-0">
-              <PublicInsights profile={result} />
-            </div>
+          <FollowersGrowth
+            points={result.followerHistory}
+            periodLabel="Tracked since first search"
+            note="Tracking started today. Growth appears after the next daily snapshot."
+          />
+
+          {result.monthly && (
+            <>
+              <RecentMonths
+                months={result.monthly.months}
+                showReels={false}
+                coveredFrom={result.monthly.coveredFrom}
+              />
+              <MonthlyPosts
+                months={result.monthly.months}
+                label="Posts · last 12 months"
+                showReels={false}
+                windowMonths={12}
+                coveredFrom={result.monthly.coveredFrom}
+                emptyText="No posts found."
+              />
+            </>
           )}
 
           <div className="flex justify-center border-t border-[#dbdbdb]">
@@ -229,125 +256,5 @@ function ProfileStat({ label, value }) {
     <li className="text-center sm:text-left">
       <span className="font-semibold">{value ?? "–"}</span> <span>{label}</span>
     </li>
-  );
-}
-
-// Insights we can compute from public data: the last posts and their likes/comments.
-function PublicInsights({ profile }) {
-  const posts = [...profile.media.data].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-  const withLikes = posts.filter((p) => typeof p.like_count === "number");
-  const avg = (list, key) =>
-    list.length === 0 ? null : list.reduce((sum, p) => sum + (p[key] ?? 0), 0) / list.length;
-
-  const avgLikes = avg(withLikes, "like_count");
-  const avgComments = avg(posts.filter((p) => typeof p.comments_count === "number"), "comments_count");
-  const followers = profile.followers_count ?? 0;
-  const engagement =
-    followers > 0 && avgLikes !== null ? (((avgLikes ?? 0) + (avgComments ?? 0)) / followers) * 100 : null;
-
-  const spanDays = posts.length > 1
-    ? (new Date(posts[posts.length - 1].timestamp) - new Date(posts[0].timestamp)) / 86400000
-    : 0;
-  const perWeek = spanDays > 0 ? (posts.length / spanDays) * 7 : null;
-
-  const top = withLikes.reduce((best, p) => (!best || p.like_count > best.like_count ? p : best), null);
-
-  const fmt = (n, digits = 0) => (n === null || n === undefined ? "–" : Number(n).toFixed(digits));
-
-  return (
-    <div className="mt-4 rounded-lg border border-[#dbdbdb] p-4">
-      <p className="mb-3 text-xs font-semibold text-[#8e8e8e]">Public insights · last {posts.length} posts</p>
-      <div className="mb-4 flex flex-wrap gap-x-8 gap-y-2 text-sm">
-        <Metric
-          label="Engagement rate"
-          value={engagement === null ? "–" : `${fmt(engagement, 2)}%`}
-          formula="(avg likes + avg comments) ÷ followers × 100"
-        />
-        <Metric
-          label="Avg likes"
-          value={fmt(avgLikes)}
-          formula="sum of likes ÷ number of posts"
-        />
-        <Metric
-          label="Avg comments"
-          value={fmt(avgComments)}
-          formula="sum of comments ÷ number of posts"
-        />
-        <Metric
-          label="Posts / week"
-          value={fmt(perWeek, 1)}
-          formula="posts ÷ (days from oldest to newest post ÷ 7)"
-        />
-      </div>
-      {withLikes.length > 0 && (
-        <>
-          <p className="mb-1 text-xs text-[#8e8e8e]">Likes per post</p>
-          <BarChart
-            data={posts.map((p) => ({
-              label: new Date(p.timestamp).toISOString().slice(0, 10),
-              short: new Date(p.timestamp).toISOString().slice(5, 10),
-              value: p.like_count ?? 0,
-            }))}
-            yLabel="Likes"
-            xLabel="Post date"
-            color="#c13584"
-            height={180}
-          />
-        </>
-      )}
-      <details className="mt-4" open>
-        <summary className="cursor-pointer text-xs font-semibold text-[#262626]">Date by date</summary>
-        <div className="mt-3 overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-xs text-[#8e8e8e]">
-                <th className="py-1 font-normal">Date</th>
-                <th className="py-1 text-right font-normal">Likes</th>
-                <th className="py-1 text-right font-normal">Comments</th>
-                <th className="py-1 text-right font-normal">Engagement</th>
-              </tr>
-            </thead>
-            <tbody>
-              {[...posts].reverse().map((p) => {
-                const likes = p.like_count ?? null;
-                const comments = p.comments_count ?? null;
-                const total = likes === null && comments === null ? null : (likes ?? 0) + (comments ?? 0);
-                return (
-                  <tr key={p.id} className="border-t border-[#efefef]">
-                    <td className="py-1.5">
-                      <a href={p.permalink} target="_blank" rel="noopener noreferrer" className="hover:underline">
-                        {new Date(p.timestamp).toISOString().slice(0, 10)}
-                      </a>
-                    </td>
-                    <td className="py-1.5 text-right">{fmt(likes)}</td>
-                    <td className="py-1.5 text-right">{fmt(comments)}</td>
-                    <td className="py-1.5 text-right">{fmt(total)}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </details>
-
-      {top && (
-        <p className="mt-3 text-xs text-[#8e8e8e]">
-          Top post: {top.like_count.toLocaleString()} likes ·{" "}
-          <a href={top.permalink} target="_blank" rel="noopener noreferrer" className="text-[#0095f6] hover:underline">
-            open
-          </a>
-        </p>
-      )}
-    </div>
-  );
-}
-
-function Metric({ label, value, formula }) {
-  return (
-    <div>
-      <p className="text-xs text-[#8e8e8e]">{label}</p>
-      <p className="text-lg font-semibold text-[#262626]">{value}</p>
-      {formula && <p className="mt-0.5 max-w-[200px] text-[10px] leading-snug text-[#8e8e8e]">{formula}</p>}
-    </div>
   );
 }

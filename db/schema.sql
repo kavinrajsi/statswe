@@ -69,3 +69,14 @@ create table if not exists ig_post_snapshots (
 
 -- Set when Meta refuses insights for a post (posted before the account became a business account).
 alter table ig_posts add column if not exists insights_unavailable boolean not null default false;
+
+-- Public follower counts of usernames looked up from the search box. One row per user/username/day.
+-- source: search (recorded when searched) | cron (daily re-snapshot). Kept 90 days; see snapshot-lookups cron.
+create table if not exists ig_lookup_followers (
+  fb_user_id    uuid not null references fb_users(id) on delete cascade,
+  username      text not null,
+  snapshot_date date not null,
+  followers     int  not null,
+  source        text not null default 'search',
+  primary key (fb_user_id, username, snapshot_date)
+);

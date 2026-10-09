@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 import { decrypt } from "@/lib/crypto";
-import { fetchAccountInsights, fetchPages } from "@/lib/meta";
+import { fetchAccountInsights, fetchIgProfile, fetchPages } from "@/lib/meta";
 import { readSession, SESSION_COOKIE } from "@/lib/session";
 
 // Daily account insights for one IG account the logged-in user owns. Not stored.
@@ -26,7 +26,12 @@ export async function GET(request) {
     if (!page?.access_token) {
       return NextResponse.json({ error: "no_page_token" }, { status: 502 });
     }
-    return NextResponse.json(await fetchAccountInsights(row.ig_user_id, page.access_token));
+    // Current follower total anchors the growth chart; if it fails the chart is just hidden
+    const [insights, profile] = await Promise.all([
+      fetchAccountInsights(row.ig_user_id, page.access_token),
+      fetchIgProfile(row.ig_user_id, page.access_token).catch(() => null),
+    ]);
+    return NextResponse.json({ ...insights, followers: profile?.followers_count ?? null });
   } catch (err) {
     console.error("Account insights failed:", err);
     return NextResponse.json({ error: "insights_failed" }, { status: 502 });

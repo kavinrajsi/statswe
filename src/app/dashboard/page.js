@@ -8,6 +8,7 @@ import { readSession, SESSION_COOKIE } from "@/lib/session";
 import PostGrid from "./PostGrid";
 import AccountInsights from "./AccountInsights";
 import MonthlyPosts from "./MonthlyPosts";
+import RecentMonths from "./RecentMonths";
 import { LookupForm, LookupGate, LookupProvider, LookupResults } from "./LookupBox";
 
 export default function Dashboard({ searchParams }) {
@@ -118,6 +119,8 @@ async function DashboardContent({ searchParams }) {
       )}
 
       <AccountInsights key={active.id} accountId={active.id} />
+
+      <RecentMonths months={months} />
 
       <MonthlyPosts months={months} />
 
