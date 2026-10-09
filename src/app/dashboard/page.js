@@ -7,7 +7,6 @@ import { sql } from "@/lib/db";
 import { readSession, SESSION_COOKIE } from "@/lib/session";
 import PostGrid from "./PostGrid";
 import AccountInsights from "./AccountInsights";
-import MonthlyPosts from "./MonthlyPosts";
 import RecentMonths from "./RecentMonths";
 import { LookupForm, LookupGate, LookupProvider, LookupResults } from "./LookupBox";
 
@@ -121,8 +120,6 @@ async function DashboardContent({ searchParams }) {
       <AccountInsights key={active.id} accountId={active.id} />
 
       <RecentMonths months={months} />
-
-      <MonthlyPosts months={months} />
 
       {/* Tab bar */}
       <nav className="flex justify-center gap-12 border-t border-[#dbdbdb]">
