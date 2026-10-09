@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 import { decrypt } from "@/lib/crypto";
-import { fetchAccountInsights, fetchIgProfile, fetchPages } from "@/lib/meta";
+import { monthEnds } from "@/app/dashboard/months";
+import { fetchAccountInsights, fetchFollowerPoints, fetchIgProfile, fetchPages } from "@/lib/meta";
 import { readSession, SESSION_COOKIE } from "@/lib/session";
 
 // Daily account insights for one IG account the logged-in user owns. Not stored.
@@ -31,7 +32,15 @@ export async function GET(request) {
       fetchAccountInsights(row.ig_user_id, page.access_token),
       fetchIgProfile(row.ig_user_id, page.access_token).catch(() => null),
     ]);
-    return NextResponse.json({ ...insights, followers: profile?.followers_count ?? null });
+    const followers = profile?.followers_count ?? null;
+    // Month-end totals for the last 12 months. Null if Meta has no follower history for this account.
+    const followerMonths =
+      followers === null
+        ? null
+        : await fetchFollowerPoints(row.ig_user_id, page.access_token, followers)
+            .then((points) => monthEnds(points, 12))
+            .catch(() => null);
+    return NextResponse.json({ ...insights, followers, followerMonths });
   } catch (err) {
     console.error("Account insights failed:", err);
     return NextResponse.json({ error: "insights_failed" }, { status: 502 });

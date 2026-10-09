@@ -9,7 +9,7 @@ export async function GET(request) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
   try {
-    return NextResponse.json(await snapshotLookups(90));
+    return NextResponse.json(await snapshotLookups(400));
   } catch (err) {
     console.error("Lookup snapshot run failed:", err);
     return NextResponse.json({ error: "snapshot_failed" }, { status: 500 });

@@ -197,6 +197,43 @@ export async function fetchAccountInsights(igUserId, pageToken, days = 30) {
   return { days: series, views, error };
 }
 
+// Daily follower totals for the last `windows` * 30 days, rebuilt from the current count and Meta's daily
+// net change. Meta serves follower_count in windows of at most 30 days, so this makes one call per window.
+// Windows are read newest first; older windows past Meta's retention fail and are dropped, which keeps the
+// totals exact for the days kept. Returns points oldest first.
+export async function fetchFollowerPoints(igUserId, pageToken, currentFollowers, windows = 12) {
+  const DAY = 86400;
+  const now = Math.floor(Date.now() / 1000);
+  const ranges = Array.from({ length: windows }, (_, i) => {
+    const until = now - i * 30 * DAY;
+    return { since: until - 30 * DAY, until };
+  });
+
+  const responses = await Promise.all(
+    ranges.map(({ since, until }) =>
+      getJson(`${GRAPH}/${igUserId}/insights?metric=follower_count&period=day&since=${since}&until=${until}`, pageToken)
+        .catch(() => null)
+    )
+  );
+
+  let contiguous = 0;
+  while (contiguous < responses.length && responses[contiguous]) contiguous += 1;
+  if (contiguous === 0) throw new Error("No follower_count data");
+
+  const netByDate = new Map();
+  for (const json of responses.slice(0, contiguous)) {
+    for (const v of json.data?.[0]?.values ?? []) netByDate.set(v.end_time.slice(0, 10), v.value ?? 0);
+  }
+
+  const points = [];
+  let total = currentFollowers;
+  for (const date of [...netByDate.keys()].sort().reverse()) {
+    points.unshift({ date, followers: total });
+    total -= netByDate.get(date);
+  }
+  return points;
+}
+
 // Public profile + recent media of another Business/Creator account, looked up by username.
 // Called with the Page token of one of the logged-in user's IG accounts.
 export async function fetchBusinessDiscovery(igUserId, pageToken, username) {

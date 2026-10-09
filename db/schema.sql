@@ -71,7 +71,7 @@ create table if not exists ig_post_snapshots (
 alter table ig_posts add column if not exists insights_unavailable boolean not null default false;
 
 -- Public follower counts of usernames looked up from the search box. One row per user/username/day.
--- source: search (recorded when searched) | cron (daily re-snapshot). Kept 90 days; see snapshot-lookups cron.
+-- source: search (recorded when searched) | cron (daily re-snapshot). Kept about 13 months; see snapshot-lookups cron.
 create table if not exists ig_lookup_followers (
   fb_user_id    uuid not null references fb_users(id) on delete cascade,
   username      text not null,

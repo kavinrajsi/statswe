@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import BarChart from "./BarChart";
 import FollowersGrowth from "./FollowersGrowth";
+import FollowersByMonth from "./FollowersByMonth";
 
 // Last 30 days of account-level insights, fetched live from Meta.
 export default function AccountInsights({ accountId }) {
@@ -96,6 +97,7 @@ export default function AccountInsights({ accountId }) {
       )}
     </section>
     <FollowersGrowth points={followerSeries(days, data.followers)} periodLabel="Last 30 days" />
+    {data.followerMonths && <FollowersByMonth months={data.followerMonths} />}
     </>
   );
 }

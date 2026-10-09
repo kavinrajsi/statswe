@@ -17,7 +17,8 @@ export async function recordLookupFollowers(userId, username, followers) {
   `;
 }
 
-export async function getLookupFollowerHistory(userId, username, days = 30) {
+// Up to about 13 months, enough for the month-by-month view.
+export async function getLookupFollowerHistory(userId, username, days = 400) {
   return sql`
     select to_char(snapshot_date, 'YYYY-MM-DD') as date, followers
     from ig_lookup_followers
@@ -29,7 +30,7 @@ export async function getLookupFollowerHistory(userId, username, days = 30) {
 
 // Daily cron. Re-snapshots every username that was searched in the last 30 days, so growth
 // keeps building without new searches. Same-day search rows are never overwritten.
-export async function snapshotLookups(days = 90) {
+export async function snapshotLookups(days = 400) {
   const users = await sql`select id, token_enc from fb_users where status = 'active'`;
   let taken = 0;
   let failed = 0;

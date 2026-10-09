@@ -5,6 +5,8 @@ import Image from "next/image";
 import RecentMonths from "./RecentMonths";
 import MonthlyPosts from "./MonthlyPosts";
 import FollowersGrowth from "./FollowersGrowth";
+import FollowersByMonth from "./FollowersByMonth";
+import { monthEnds } from "./months";
 
 const LookupContext = createContext(null);
 
@@ -193,6 +195,7 @@ export function LookupResults() {
             periodLabel="Tracked since first search"
             note="Tracking started today. Growth appears after the next daily snapshot."
           />
+          <FollowersByMonth months={monthEnds(result.followerHistory, 12)} />
 
           {result.monthly && (
             <>

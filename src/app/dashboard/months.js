@@ -14,6 +14,14 @@ export function recentMonthKeys(count) {
   return keys;
 }
 
+// Last value of each month over the last `count` calendar months, oldest first. Months without data are null.
+// points: [{ date: "YYYY-MM-DD", followers }], oldest first.
+export function monthEnds(points, count) {
+  const last = new Map();
+  for (const p of points) last.set(p.date.slice(0, 7), p.followers);
+  return recentMonthKeys(count).map((month) => ({ month, followers: last.get(month) ?? null }));
+}
+
 export function monthLabel(key) {
   const [year, month] = key.split("-").map(Number);
   const name = new Date(Date.UTC(year, month - 1, 1)).toLocaleString("en-US", {
