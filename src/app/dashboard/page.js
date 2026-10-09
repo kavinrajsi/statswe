@@ -13,7 +13,9 @@ import PostGrid from "./PostGrid";
 import AccountInsights from "./AccountInsights";
 import { AccountsOverview } from "./AccountsOverview";
 import RecentMonths from "./RecentMonths";
-import { LookupGate, LookupProvider, LookupResults } from "./LookupBox";
+import { CompetitorChips, LookupGate, LookupProvider, LookupResults } from "./LookupBox";
+import { BrandStyle } from "./BrandStyle";
+import { getBrandColor, listCompetitors } from "@/lib/settings";
 import { Grid2x2, Play, Tag } from "lucide-react";
 
 export default function Dashboard({ searchParams }) {
@@ -62,17 +64,21 @@ async function DashboardContent({ searchParams }) {
   const { account: accountParam, tab: tabParam } = await searchParams;
   const active = accounts.find((a) => a.id === accountParam) ?? accounts[0];
   const tab = TABS.find((t) => t.key === tabParam)?.key ?? "posts";
-  const [posts, months] = await Promise.all([
+  const [posts, months, brandColor, competitors] = await Promise.all([
     fetchPosts(active.id, tab),
     fetchMonthlyCounts(active.id),
+    getBrandColor(session.userId),
+    listCompetitors(session.userId),
   ]);
 
   return (
     <LookupProvider>
-      <Shell appBar={<AppBar accounts={accounts} activeId={active.id} tab={tab} />}>
+      <Shell appBar={<AppBar accounts={accounts} activeId={active.id} tab={tab} />} brandColor={brandColor}>
         <LookupResults />
 
         <LookupGate>
+          <CompetitorChips competitors={competitors} />
+
           <ProfileCard
             username={active.username}
             name={active.name}
@@ -163,9 +169,10 @@ async function fetchPosts(accountId, tab) {
     order by ts desc`;
 }
 
-function Shell({ appBar, children }) {
+function Shell({ appBar, brandColor, children }) {
   return (
     <div className="min-h-screen bg-background text-foreground">
+      <BrandStyle color={brandColor} />
       {appBar}
       <main className="mx-auto max-w-6xl space-y-6 px-4 py-6">{children}</main>
     </div>

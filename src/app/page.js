@@ -20,7 +20,7 @@ async function HomeContent({ searchParams }) {
     <main className="flex min-h-screen items-center justify-center bg-muted/40 px-4">
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl">Instame</CardTitle>
+          <CardTitle className="text-2xl">statswe</CardTitle>
           <CardDescription>
             Log in with Facebook to see all posts from the Instagram Business or Creator accounts on your Pages.
           </CardDescription>

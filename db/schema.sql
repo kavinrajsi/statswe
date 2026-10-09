@@ -92,3 +92,42 @@ create table if not exists ig_account_monthly (
   fetched_at    timestamptz not null default now(),
   primary key (ig_user_id, month)
 );
+
+-- Per-login settings: brand colour as "#rrggbb" (null = default theme).
+create table if not exists user_settings (
+  fb_user_id  uuid primary key references fb_users(id) on delete cascade,
+  brand_color text,
+  updated_at  timestamptz not null default now()
+);
+
+-- Competitor Instagram usernames saved per login. Tracked daily by the snapshot-lookups cron.
+create table if not exists ig_competitors (
+  fb_user_id uuid not null references fb_users(id) on delete cascade,
+  username   text not null,
+  added_at   timestamptz not null default now(),
+  primary key (fb_user_id, username)
+);
+
+-- Instagram stories, captured daily while they are live (Meta serves them for 24 hours only).
+-- metrics holds the latest insights for the story. Kept 90 days; see capture-stories cron.
+create table if not exists ig_stories (
+  ig_id         text primary key,
+  account_id    uuid not null references ig_accounts(id) on delete cascade,
+  media_type    text,
+  media_url     text,
+  thumbnail_url text,
+  permalink     text,
+  ts            timestamptz not null,
+  metrics       jsonb,
+  captured_at   timestamptz not null default now()
+);
+create index if not exists ig_stories_account_ts_idx on ig_stories (account_id, ts desc);
+
+-- Coordinates for audience city names ("Chennai, Tamil Nadu"), looked up once and reused.
+-- lat/lon are null when no match was found, so the lookup isn't repeated.
+create table if not exists city_geo (
+  name       text primary key,
+  lat        double precision,
+  lon        double precision,
+  looked_up_at timestamptz not null default now()
+);

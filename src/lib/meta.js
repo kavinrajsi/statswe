@@ -222,6 +222,36 @@ export async function fetchOnlineFollowers(igUserId, pageToken) {
   }
 }
 
+// Stories that are live right now. Null if Meta refuses the request.
+export async function fetchStories(igUserId, pageToken) {
+  try {
+    const json = await getJson(
+      `${GRAPH}/${igUserId}/stories?fields=id,media_type,media_url,thumbnail_url,permalink,timestamp&limit=50`,
+      pageToken
+    );
+    return json.data ?? [];
+  } catch {
+    return null;
+  }
+}
+
+// Latest insights for one story. Each metric fails on its own (null).
+export async function fetchStoryInsights(storyId, pageToken) {
+  const metrics = ["views", "reach", "replies", "shares", "total_interactions"];
+  const out = {};
+  await Promise.all(
+    metrics.map(async (m) => {
+      try {
+        const json = await getJson(`${GRAPH}/${storyId}/insights?metric=${m}`, pageToken);
+        out[m] = json.data?.[0]?.values?.[0]?.value ?? json.data?.[0]?.value ?? null;
+      } catch {
+        out[m] = null;
+      }
+    })
+  );
+  return out;
+}
+
 const MAX_WINDOW_SEC = 30 * 86400;
 
 // Splits [since, until) into windows Meta accepts (at most 30 days each).

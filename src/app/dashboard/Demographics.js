@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CityMap, CountryMap } from "./AudienceMaps";
 
 const AGE_ORDER = ["13-17", "18-24", "25-34", "35-44", "45-54", "55-64", "65+"];
 const TOP = 5;
@@ -45,13 +46,17 @@ export default function Demographics({ accountId }) {
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-2">
-      <AudienceCard title="Followers" data={data.followers} />
-      <AudienceCard title="Reached audience" data={data.reached} />
+    <div className="space-y-6">
+      <div className="grid gap-6 lg:grid-cols-2">
+        <AudienceCard title="Followers" data={data.followers} />
+        <AudienceCard title="Reached audience" data={data.reached} />
+      </div>
+      <LocationsCard followers={data.followers} reached={data.reached} />
     </div>
   );
 }
 
+// Age range of one audience.
 function AudienceCard({ title, data }) {
   return (
     <Card>
@@ -59,15 +64,49 @@ function AudienceCard({ title, data }) {
         <CardTitle className="text-base">{title}</CardTitle>
         <CardDescription>{data?.period}</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6">
+      <CardContent>
         <Section title="Age range" rows={ageRows(data?.age)} />
-        <Separator />
-        <Section title="Top countries" rows={topRows(data?.country, countryName)} />
-        <Separator />
-        <Section title="Top cities" rows={topRows(data?.city, (k) => k)} />
       </CardContent>
     </Card>
   );
+}
+
+// Countries and cities of the chosen audience, with a large map of each side by side.
+function LocationsCard({ followers, reached }) {
+  const [audience, setAudience] = useState("followers");
+  const d = audience === "followers" ? followers : reached;
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3">
+        <div>
+          <CardTitle className="text-base">Audience locations</CardTitle>
+          <CardDescription>{d?.period}</CardDescription>
+        </div>
+        <Tabs value={audience} onValueChange={setAudience}>
+          <TabsList>
+            <TabsTrigger value="followers">Followers</TabsTrigger>
+            <TabsTrigger value="reached">Reached audience</TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </CardHeader>
+      <CardContent className="grid gap-6 lg:grid-cols-2">
+        <div className="space-y-4">
+          <Section title="Top countries" rows={topRows(d?.country, countryName)} />
+          {d?.country && <CountryMap rows={d.country} />}
+        </div>
+        <div className="space-y-4">
+          <Section title="Top cities" rows={topRows(d?.city, (k) => k)} />
+          {d?.city && <CityMap rows={topCityRows(d.city)} />}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// The 10 largest cities, with coordinates when they were found.
+function topCityRows(rows) {
+  return [...rows].sort((a, b) => b.value - a.value).slice(0, 10);
 }
 
 function Section({ title, rows }) {

@@ -46,10 +46,14 @@ export async function snapshotLookups(days = 400) {
       const page = pages.find((p) => p.id === account?.page_id);
       if (!account || !page?.access_token) continue;
 
+      // Recently searched usernames, plus saved competitors (tracked every day, searched or not)
       const usernames = await sql`
-        select distinct username from ig_lookup_followers
+        select username from ig_lookup_followers
         where fb_user_id = ${user.id} and source = 'search'
           and snapshot_date >= current_date - 30
+        union
+        select username from ig_competitors
+        where fb_user_id = ${user.id}
       `;
 
       for (const { username } of usernames) {

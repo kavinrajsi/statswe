@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import BarChart from "./BarChart";
 import AudienceInsights from "./AudienceInsights";
 import TopContent from "./TopContent";
+import ContentInsights from "./ContentInsights";
 import Demographics from "./Demographics";
 import ActiveTimes from "./ActiveTimes";
 import MonthlyMetrics from "./MonthlyMetrics";
@@ -94,6 +95,8 @@ export default function AccountInsights({ accountId, children }) {
       <AudienceInsights accountId={accountId} />
 
       <TopContent accountId={accountId} />
+
+      <ContentInsights accountId={accountId} />
 
       <Demographics accountId={accountId} />
 

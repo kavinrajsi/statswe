@@ -3,6 +3,7 @@ import { sql } from "@/lib/db";
 import { decrypt } from "@/lib/crypto";
 import { fetchDemographics, fetchPages } from "@/lib/meta";
 import { readSession, SESSION_COOKIE } from "@/lib/session";
+import { numericCountry, resolveCities } from "@/lib/geo";
 
 // Age, country and city of the followers (last 90 days) and of the reached audience (this month). Not stored.
 export async function GET(request) {
@@ -38,9 +39,29 @@ export async function GET(request) {
       ask("reached_audience_demographics", "this_month", "city"),
     ]);
 
+    // Map data: numeric country ids for the world map, and coordinates for the 10 largest cities of each list
+    const topCities = (rows) => [...(rows ?? [])].sort((a, b) => b.value - a.value).slice(0, 10);
+    const geo = await resolveCities([...topCities(fCity), ...topCities(rCity)].map((r) => r.key));
+    const withGeo = (rows) =>
+      rows?.map((r) => {
+        const point = geo.get(r.key);
+        return point ? { ...r, lat: point.lat, lon: point.lon } : r;
+      });
+    const withNumeric = (rows) => rows?.map((r) => ({ ...r, numeric: numericCountry(r.key) }));
+
     return NextResponse.json({
-      followers: { period: "Last 90 days", age: fAge, country: fCountry, city: fCity },
-      reached: { period: "This month", age: rAge, country: rCountry, city: rCity },
+      followers: {
+        period: "Last 90 days",
+        age: fAge,
+        country: withNumeric(fCountry),
+        city: withGeo(fCity),
+      },
+      reached: {
+        period: "This month",
+        age: rAge,
+        country: withNumeric(rCountry),
+        city: withGeo(rCity),
+      },
     });
   } catch (err) {
     console.error("Demographics failed:", err);

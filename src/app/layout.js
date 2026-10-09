@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "Instame",
+  title: "statswe",
   description: "Instagram insights for the accounts on your Facebook Pages",
 };
 

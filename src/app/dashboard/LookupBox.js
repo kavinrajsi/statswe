@@ -103,6 +103,29 @@ export function LookupGate({ children }) {
   return children;
 }
 
+// Saved competitors as one-click chips. Each runs the username search.
+export function CompetitorChips({ competitors }) {
+  const { search, loading } = useLookup();
+  if (competitors.length === 0) return null;
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="text-xs text-muted-foreground">Competitors</span>
+      {competitors.map((c) => (
+        <Button
+          key={c.username}
+          variant="outline"
+          size="sm"
+          className="h-7 rounded-full px-3 text-xs"
+          disabled={loading}
+          onClick={() => search(c.username)}
+        >
+          @{c.username}
+        </Button>
+      ))}
+    </div>
+  );
+}
+
 // Builds a CSV in the browser and downloads it. Nothing is sent to or stored by the server.
 function downloadCsv(profile) {
   const esc = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;

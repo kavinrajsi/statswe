@@ -2,6 +2,7 @@
   "crons": [
     { "path": "/api/cron/refresh-tokens", "schedule": "0 3 * * *" },
     { "path": "/api/cron/snapshot-insights", "schedule": "0 4 * * *" },
-    { "path": "/api/cron/snapshot-lookups", "schedule": "30 4 * * *" }
+    { "path": "/api/cron/snapshot-lookups", "schedule": "30 4 * * *" },
+    { "path": "/api/cron/capture-stories", "schedule": "30 3 * * *" }
   ]
 }
