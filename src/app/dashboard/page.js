@@ -81,16 +81,19 @@ async function DashboardContent({ searchParams }) {
         <LookupGate>
           <CompetitorChips competitors={competitors} />
 
-          <ProfileCard
-            username={active.username}
-            name={active.name}
-            pictureUrl={active.profile_picture_url}
-            posts={active.media_count ?? posts.length}
-            followers={active.followers_count}
-            following={active.follows_count}
-          />
-
-          <SyncNow lastSyncedAt={syncRun?.last_synced_at ?? null} />
+          <div className="relative">
+            <ProfileCard
+              username={active.username}
+              name={active.name}
+              pictureUrl={active.profile_picture_url}
+              posts={active.media_count ?? posts.length}
+              followers={active.followers_count}
+              following={active.follows_count}
+            />
+            <div className="absolute top-4 right-5">
+              <SyncNow lastSyncedAt={syncRun?.last_synced_at ?? null} compact />
+            </div>
+          </div>
 
           <AccountsOverview activeId={active.id} tab={tab} />
 
