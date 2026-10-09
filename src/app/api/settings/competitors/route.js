@@ -3,6 +3,7 @@ import { sql } from "@/lib/db";
 import { decrypt } from "@/lib/crypto";
 import { fetchBusinessDiscoveryFollowers, fetchPages } from "@/lib/meta";
 import { recordLookupFollowers } from "@/lib/lookup-followers";
+import { storeOneCompetitor } from "@/lib/competitors";
 import { addCompetitor, countCompetitors, MAX_COMPETITORS, removeCompetitor } from "@/lib/settings";
 import { readSession, SESSION_COOKIE } from "@/lib/session";
 
@@ -45,6 +46,12 @@ export async function POST(request) {
 
     await addCompetitor(session.userId, username);
     await recordLookupFollowers(session.userId, username, followers);
+    // Store the full stats now, so the Competitors section has data without waiting for a sync
+    try {
+      await storeOneCompetitor(session.userId, row.ig_user_id, page.access_token, username);
+    } catch (err) {
+      console.error(`Initial competitor stats failed for ${username}:`, err.message);
+    }
     return NextResponse.json({ username, followers });
   } catch (err) {
     // Meta answers with an error for unknown and private accounts

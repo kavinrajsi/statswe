@@ -15,6 +15,8 @@ import CompetitorsGrowthChart from "./CompetitorsGrowthChart";
 export default function Competitors({ accountId }) {
   const [data, setData] = useState(null);
   const [failed, setFailed] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -28,7 +30,21 @@ export default function Competitors({ accountId }) {
     return () => {
       cancelled = true;
     };
-  }, [accountId]);
+  }, [accountId, reloadKey]);
+
+  // Re-reads the saved competitors' stats from Meta, then reloads the section
+  async function refresh() {
+    setRefreshing(true);
+    await fetch("/api/instagram/competitors/refresh", { method: "POST" }).catch(() => null);
+    setRefreshing(false);
+    setData(null);
+    setReloadKey((k) => k + 1);
+  }
+  const refreshButton = (
+    <Button variant="outline" size="sm" onClick={refresh} disabled={refreshing}>
+      {refreshing ? "Refreshing…" : "Refresh"}
+    </Button>
+  );
 
   if (failed) {
     return (
@@ -60,8 +76,9 @@ export default function Competitors({ accountId }) {
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Competitors</CardTitle>
-          <CardDescription>Not synced yet. Use Sync now to load their stats.</CardDescription>
+          <CardDescription>Not loaded yet. Refresh to load their stats.</CardDescription>
         </CardHeader>
+        <CardContent>{refreshButton}</CardContent>
       </Card>
     );
   }
@@ -75,9 +92,12 @@ export default function Competitors({ accountId }) {
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Competitors</CardTitle>
-          <CardDescription>You and your saved competitors · public stats from the last sync</CardDescription>
+        <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3">
+          <div>
+            <CardTitle className="text-base">Competitors</CardTitle>
+            <CardDescription>You and your saved competitors · public stats</CardDescription>
+          </div>
+          {refreshButton}
         </CardHeader>
         <CardContent className="overflow-x-auto">
           <Table>
